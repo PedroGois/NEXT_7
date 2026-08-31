@@ -31,17 +31,24 @@
     <main>
       <section class="cycle-panel" aria-labelledby="cycleTitle">
         <div class="cycle-summary">
+          <h2 class="sr-only" id="cycleTitle">Ciclo atual</h2>
           <div class="cycle-meta">
             <span class="cycle-badge" id="cycleNumber">Ciclo 1 de 12</span>
             <span id="cyclePeriod"></span>
           </div>
-          <p class="cycle-objective-display"><span id="cycleObjectiveDisplay">Defina o foco deste ciclo.</span></p>
+          <p class="cycle-objective-display">
+            <span class="cycle-objective-label">Foco</span>
+            <span id="cycleObjectiveDisplay">Defina o foco deste ciclo.</span>
+          </p>
+          <div class="cycle-progress" aria-label="Progresso do ciclo">
+            <span class="cycle-progress-track"><span id="cycleProgressBar"></span></span>
+            <small id="cycleProgressText">0% concluído</small>
+          </div>
         </div>
         <button class="cycle-settings-button" id="openCycleSettings" type="button" aria-label="Configurar ciclo"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
       </section>
 
       <p class="import-message" id="importMessage" role="status" hidden></p>
-
       <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
         <nav class="day-navigation" id="dayNavigation" aria-label="Selecionar dia das tarefas"></nav>
         <div class="section-heading tasks-heading">
@@ -53,6 +60,7 @@
         </div>
 
         <div class="sticky-filters">
+          <label class="task-search"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i><span class="sr-only">Buscar tarefas</span><input id="taskSearch" type="search" placeholder="Buscar tarefas"></label>
           <div class="category-grid category-filters" id="categoryGrid" aria-label="Filtrar por pilar"></div>
           <div class="filters" id="filters" aria-label="Filtrar por status">
             <button class="filter active" data-filter="all" type="button">Todas</button>
@@ -88,16 +96,33 @@
       <label for="taskDescription">Detalhes da tarefa <span class="optional-label">(opcional)</span></label>
       <textarea id="taskDescription" name="description" rows="3" maxlength="400" placeholder="Anotações, resultado esperado ou como fazer..."></textarea>
 
-      <label for="taskDate">Dia planejado</label>
-      <select id="taskDate" name="scheduledDate" required></select>
+      <div class="task-templates" id="taskTemplates">
+        <span>Atalhos</span>
+        <button type="button" data-template="Treino|corpo|1,3,5">Treino seg/qua/sex</button>
+        <button type="button" data-template="Ler por 20 minutos|mente|all">Leitura diária</button>
+        <button type="button" data-template="Revisar a semana|vida|7">Revisão domingo</button>
+      </div>
 
-      <label class="repeat-option">
-        <input id="repeatDaily" name="repeatDaily" type="checkbox">
-        <span>
-          <strong>Repetir todos os dias</strong>
-          <small>Cria esta tarefa diariamente, a partir do dia escolhido até o fim do ciclo.</small>
-        </span>
-      </label>
+      <fieldset class="schedule-days" id="scheduleDays">
+        <legend>Dias planejados</legend>
+        <label class="all-days-option" id="allDaysOption">
+          <input id="allDays" type="checkbox">
+          <span>Todos os dias</span>
+        </label>
+        <div class="schedule-days-grid" id="scheduleDaysGrid"></div>
+        <p class="schedule-error" id="scheduleError" role="alert" hidden>Escolha pelo menos um dia.</p>
+      </fieldset>
+
+      <fieldset class="reminder-fieldset" id="reminderFieldset">
+        <legend>Me lembre <span class="optional-label">(opcional)</span></legend>
+        <label class="reminder-toggle"><input id="reminderEnabled" name="reminderEnabled" type="checkbox"><span>Receber uma notificação</span></label>
+        <div class="reminder-time-row" id="reminderTimeRow" hidden>
+          <label for="reminderTime">Horário</label>
+          <input id="reminderTime" name="reminderTime" type="time" value="09:00">
+          <button class="text-button" id="enableNotifications" type="button">Ativar notificações</button>
+        </div>
+        <small id="reminderSupportText">O lembrete local funciona enquanto o app estiver ativo.</small>
+      </fieldset>
 
       <fieldset>
         <legend>Área da vida</legend>
@@ -129,6 +154,7 @@
       <label for="cycleObjective">Objetivo deste ciclo</label>
       <input id="cycleObjective" type="text" maxlength="140" placeholder="Ex.: Retomar minha rotina com consistência">
 
+      <div class="settings-section-heading"><strong>Dados e backup</strong><small>Os dados ficam somente neste navegador.</small></div>
       <div class="cycle-settings-actions">
         <button class="secondary-button" id="importWeekButton" type="button"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar</button>
         <button class="secondary-button" id="exportWeekButton" type="button"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Exportar</button>
@@ -157,6 +183,8 @@
         <div><dt>Data planejada</dt><dd id="detailDate"></dd></div>
         <div><dt>Área da vida</dt><dd id="detailCategory"></dd></div>
         <div><dt>Status</dt><dd id="detailStatus"></dd></div>
+        <div><dt>Recorrência</dt><dd id="detailRecurrence"></dd></div>
+        <div><dt>Lembrete</dt><dd id="detailReminder"></dd></div>
         <div><dt>Detalhes</dt><dd id="detailDescription"></dd></div>
       </dl>
       <div class="form-actions detail-actions">
@@ -176,14 +204,30 @@
         <button class="icon-button" id="closeCycleDialogButton" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
       <p class="dialog-copy" id="closeCycleSummary"></p>
-      <label for="cycleFeedback">Como foi sua semana?</label>
-      <textarea id="cycleFeedback" name="feedback" rows="5" maxlength="600" placeholder="O que funcionou, o que aprendi e o que quero melhorar..."></textarea>
-      <p class="form-note">As tarefas e o resultado serão guardados no histórico. Um novo ciclo começará hoje.</p>
+      <label for="cycleWins">O que funcionou?</label>
+      <textarea id="cycleWins" name="wins" rows="2" maxlength="300" placeholder="Vitórias, hábitos e decisões que ajudaram..."></textarea>
+      <label for="cycleObstacles">O que dificultou?</label>
+      <textarea id="cycleObstacles" name="obstacles" rows="2" maxlength="300" placeholder="Imprevistos, excessos ou bloqueios..."></textarea>
+      <label for="cycleNextFocus">O que levar para o próximo ciclo?</label>
+      <textarea id="cycleNextFocus" name="nextFocus" rows="2" maxlength="300" placeholder="Um ajuste claro para a próxima semana..."></textarea>
+      <p class="form-note">O resultado será guardado no histórico. O próximo ciclo começará depois do término deste.</p>
       <div class="form-actions">
         <button class="secondary-button" id="cancelCloseCycle" type="button">Continuar ciclo</button>
         <button class="primary-button" type="submit">Salvar e encerrar</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="seriesActionDialog">
+    <div class="task-detail">
+      <div class="dialog-heading"><div><p class="eyebrow">Tarefa recorrente</p><h2 id="seriesActionTitle">Aplicar alteração</h2></div><button class="icon-button" id="closeSeriesAction" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+      <p class="dialog-copy">Onde você quer aplicar esta ação?</p>
+      <div class="series-options">
+        <button type="button" data-series-scope="one">Somente esta</button>
+        <button type="button" data-series-scope="future">Esta e as próximas</button>
+        <button type="button" data-series-scope="all">Todas da série</button>
+      </div>
+    </div>
   </dialog>
 
   <template id="taskTemplate">
@@ -202,6 +246,7 @@
   </template>
 
   <script src="assets/js/db.js"></script>
+  <script src="assets/js/logic.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
 </html>

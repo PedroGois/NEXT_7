@@ -23,6 +23,9 @@ const state = {
   selectedDate: null,
   editingTaskId: null,
   detailTaskId: null,
+  search: "",
+  seriesAction: null,
+  editingScope: "one",
 };
 
 const elements = {
@@ -47,8 +50,15 @@ const elements = {
   taskForm: document.querySelector("#taskForm"),
   taskTitle: document.querySelector("#taskTitle"),
   taskDescription: document.querySelector("#taskDescription"),
-  taskDate: document.querySelector("#taskDate"),
-  repeatDaily: document.querySelector("#repeatDaily"),
+  reminderEnabled: document.querySelector("#reminderEnabled"),
+  reminderTime: document.querySelector("#reminderTime"),
+  reminderTimeRow: document.querySelector("#reminderTimeRow"),
+  reminderSupportText: document.querySelector("#reminderSupportText"),
+  scheduleDays: document.querySelector("#scheduleDays"),
+  scheduleDaysGrid: document.querySelector("#scheduleDaysGrid"),
+  allDays: document.querySelector("#allDays"),
+  allDaysOption: document.querySelector("#allDaysOption"),
+  scheduleError: document.querySelector("#scheduleError"),
   closeCycleDialog: document.querySelector("#closeCycleDialog"),
   closeCycleForm: document.querySelector("#closeCycleForm"),
   closeCycleSummary: document.querySelector("#closeCycleSummary"),
@@ -58,6 +68,10 @@ const elements = {
   importMessage: document.querySelector("#importMessage"),
   taskTemplate: document.querySelector("#taskTemplate"),
   taskDetailDialog: document.querySelector("#taskDetailDialog"),
+  cycleProgressBar: document.querySelector("#cycleProgressBar"),
+  cycleProgressText: document.querySelector("#cycleProgressText"),
+  taskSearch: document.querySelector("#taskSearch"),
+  seriesActionDialog: document.querySelector("#seriesActionDialog"),
 };
 
 // =============================================================
@@ -115,9 +129,9 @@ function buildCycle(number, startDate = toDateKey(new Date())) {
   };
 }
 
-async function createNextCycle(existingCycles) {
+async function createNextCycle(existingCycles, startDate = toDateKey(new Date())) {
   const lastNumber = Math.max(0, ...existingCycles.map((cycle) => cycle.number));
-  const cycle = buildCycle(lastNumber + 1);
+  const cycle = buildCycle(lastNumber + 1, startDate);
   cycle.id = await NextDB.cycles.add(cycle);
   return cycle;
 }
@@ -151,6 +165,14 @@ async function loadData() {
     : state.activeCycle.startDate;
 }
 
+// Remove exemplos criados por versões anteriores, sem tocar em tarefas reais.
+async function removeLegacyDemoTasks() {
+  const demoTasks = state.tasks.filter((task) => task.isDemo);
+  for (const task of demoTasks) await NextDB.tasks.remove(task.id);
+  state.tasks = state.tasks.filter((task) => !task.isDemo);
+  localStorage.removeItem("next7-demo-week-v1");
+}
+
 // =============================================================
 // 4. RENDERIZAÇÃO DO CICLO ATUAL
 // =============================================================
@@ -161,16 +183,31 @@ function renderCycleHeader() {
   elements.cyclePeriod.textContent = `${formatDate(cycle.startDate)} — ${formatDate(cycle.endDate)}`;
   elements.cycleObjective.value = cycle.objective;
   elements.cycleObjectiveDisplay.textContent = cycle.objective || "Defina o foco deste ciclo.";
+  const { completed, percentage } = NextLogic.calculateProgress(state.tasks);
+  const todayKey = toDateKey(new Date());
+  const remainingDays = Math.max(0, daysBetween(todayKey, cycle.endDate) + 1);
+  elements.cycleProgressBar.style.width = `${percentage}%`;
+  elements.cycleProgressText.textContent = `${percentage}% · ${completed}/${state.tasks.length} · ${remainingDays} dia(s) restante(s)`;
 }
 
 function renderWeek() {
-  elements.taskDate.innerHTML = "";
+  renderScheduleDayOptions();
+}
 
-  cycleDates(state.activeCycle).forEach((dateKey, index) => {
-    const option = document.createElement("option");
-    option.value = dateKey;
-    option.textContent = `Dia ${index + 1} — ${formatDate(dateKey, { weekday: "long", day: "2-digit", month: "2-digit" })}`;
-    elements.taskDate.append(option);
+function renderScheduleDayOptions(selectedDates = [], editing = false) {
+  elements.scheduleDaysGrid.innerHTML = "";
+  elements.allDaysOption.hidden = editing;
+  elements.allDays.checked = false;
+  elements.scheduleError.hidden = true;
+
+  cycleDates(state.activeCycle).forEach((dateKey) => {
+    const label = document.createElement("label");
+    label.className = "schedule-day";
+    label.innerHTML = `
+      <input type="${editing ? "radio" : "checkbox"}" name="scheduledDates" value="${dateKey}" ${selectedDates.includes(dateKey) ? "checked" : ""}>
+      <span>${formatDate(dateKey, { weekday: "short" })}</span>
+    `;
+    elements.scheduleDaysGrid.append(label);
   });
 }
 
@@ -247,6 +284,9 @@ function renderCategories() {
 function visibleTasks() {
   let visible = tasksInActiveScope();
   if (state.categoryFilter !== "all") visible = visible.filter((task) => task.category === state.categoryFilter);
+  if (state.search) visible = visible.filter((task) =>
+    `${task.title} ${task.description || ""}`.toLowerCase().includes(state.search)
+  );
   return visible;
 }
 
@@ -282,15 +322,16 @@ function renderTasks() {
     item.dataset.id = task.id;
     item.dataset.category = task.category;
     item.classList.toggle("completed", task.completed);
+    item.classList.toggle("overdue", !task.completed && task.scheduledDate < toDateKey(new Date()));
     item.querySelector("h3").textContent = task.title;
-    const repeatLabel = task.seriesId ? " · repete diariamente" : "";
+    const repeatLabel = task.seriesId ? " · tarefa recorrente" : "";
     const dateLabel = ` · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}`;
     item.querySelector(".task-category").textContent = `${categories[task.category].label}${dateLabel}${repeatLabel}`;
     check.innerHTML = task.completed ? '<i class="fa-solid fa-check" aria-hidden="true"></i>' : "";
     check.setAttribute("aria-label", task.completed ? "Marcar como pendente" : "Marcar como concluída");
     check.addEventListener("click", () => toggleTask(task.id));
     item.querySelector(".view-task").addEventListener("click", () => openTaskDetail(task.id));
-    item.querySelector(".edit-task").addEventListener("click", () => openEditTask(task.id));
+    item.querySelector(".edit-task").addEventListener("click", () => requestSeriesAction("edit", task.id));
     item.querySelector(".delete-task").addEventListener("click", () => deleteTask(task.id));
     elements.taskList.append(item);
   });
@@ -338,13 +379,17 @@ async function saveObjective(event) {
 }
 
 function openTaskDialog(selectedDate = state.selectedDate) {
+  const availableDates = cycleDates(state.activeCycle);
+  if (!availableDates.includes(selectedDate)) selectedDate = availableDates[0];
   state.editingTaskId = null;
+  state.editingScope = "one";
   elements.taskForm.reset();
-  elements.repeatDaily.closest(".repeat-option").hidden = false;
+  elements.scheduleDays.hidden = false;
+  elements.reminderTimeRow.hidden = true;
   elements.taskForm.querySelector(".eyebrow").textContent = "Novo passo";
   elements.taskForm.querySelector("h2").textContent = "Adicionar tarefa";
   elements.taskForm.querySelector('[type="submit"]').textContent = "Adicionar tarefa";
-  elements.taskDate.value = selectedDate;
+  renderScheduleDayOptions([selectedDate]);
   elements.taskDialog.showModal();
   requestAnimationFrame(() => elements.taskTitle.focus());
 }
@@ -353,17 +398,28 @@ async function addTask(event) {
   event.preventDefault();
   const data = new FormData(elements.taskForm);
   const title = data.get("title").trim();
-  const firstDate = data.get("scheduledDate");
-  const shouldRepeat = data.get("repeatDaily") === "on";
+  const scheduledDates = [...new Set(data.getAll("scheduledDates"))]
+    .sort((a, b) => a.localeCompare(b));
+  if (!scheduledDates.length && (state.editingTaskId === null || state.editingScope === "one")) {
+    elements.scheduleError.hidden = false;
+    return;
+  }
+  const firstDate = scheduledDates[0] || null;
+  const reminderTime = data.get("reminderEnabled") === "on" ? data.get("reminderTime") : null;
   if (!title) return;
 
   if (state.editingTaskId !== null) {
     const task = state.tasks.find((item) => item.id === state.editingTaskId);
-    task.title = title;
-    task.description = data.get("description").trim();
-    task.scheduledDate = firstDate;
-    task.category = data.get("category");
-    await NextDB.tasks.update(task);
+    const affectedTasks = tasksForSeriesScope(task, state.editingScope);
+    for (const affectedTask of affectedTasks) {
+      affectedTask.title = title;
+      affectedTask.description = data.get("description").trim();
+      if (state.editingScope === "one") affectedTask.scheduledDate = firstDate;
+      affectedTask.category = data.get("category");
+      affectedTask.reminderTime = reminderTime;
+      affectedTask.reminderSentAt = null;
+      await NextDB.tasks.update(affectedTask);
+    }
     state.editingTaskId = null;
     elements.taskForm.reset();
     elements.taskDialog.close();
@@ -373,11 +429,7 @@ async function addTask(event) {
 
   // Uma repetição vira tarefas independentes, uma por dia. Isso deixa cada
   // ocorrência concluível separadamente e mantém o modelo fácil de entender.
-  const dates = cycleDates(state.activeCycle);
-  const scheduledDates = shouldRepeat
-    ? dates.slice(dates.indexOf(firstDate))
-    : [firstDate];
-  const seriesId = shouldRepeat
+  const seriesId = scheduledDates.length > 1
     ? (crypto.randomUUID?.() || `series-${Date.now()}`)
     : null;
 
@@ -392,6 +444,8 @@ async function addTask(event) {
       completed: false,
       completedAt: null,
       createdAt: new Date().toISOString(),
+      reminderTime,
+      reminderSentAt: null,
     };
     task.id = await NextDB.tasks.add(task);
     state.tasks.push(task);
@@ -412,9 +466,52 @@ async function toggleTask(id) {
 }
 
 async function deleteTask(id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task) return;
+  if (task.seriesId) {
+    requestSeriesAction("delete", id);
+    return;
+  }
   if (!confirm("Excluir esta tarefa? Essa ação não pode ser desfeita.")) return;
-  await NextDB.tasks.remove(id);
-  state.tasks = state.tasks.filter((task) => task.id !== id);
+  await removeTasks([task]);
+  render();
+}
+
+function tasksForSeriesScope(task, scope) {
+  return NextLogic.selectSeriesTasks(state.tasks, task, scope);
+}
+
+async function removeTasks(tasks) {
+  for (const task of tasks) await NextDB.tasks.remove(task.id);
+  const removedIds = new Set(tasks.map((task) => task.id));
+  state.tasks = state.tasks.filter((task) => !removedIds.has(task.id));
+}
+
+function requestSeriesAction(action, id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task?.seriesId) {
+    if (action === "edit") openEditTask(id, "one");
+    else deleteTask(id);
+    return;
+  }
+  state.seriesAction = { action, id };
+  document.querySelector("#seriesActionTitle").textContent = action === "edit" ? "Editar recorrência" : "Excluir recorrência";
+  elements.seriesActionDialog.showModal();
+}
+
+async function applySeriesAction(scope) {
+  const pending = state.seriesAction;
+  elements.seriesActionDialog.close();
+  state.seriesAction = null;
+  if (!pending) return;
+  const task = state.tasks.find((item) => item.id === pending.id);
+  if (!task) return;
+  if (pending.action === "edit") {
+    openEditTask(task.id, scope);
+    return;
+  }
+  if (!confirm("Excluir as ocorrências selecionadas? Essa ação não pode ser desfeita.")) return;
+  await removeTasks(tasksForSeriesScope(task, scope));
   render();
 }
 
@@ -427,23 +524,31 @@ function openTaskDetail(id) {
   document.querySelector("#detailDate").textContent = formatDate(task.scheduledDate, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   document.querySelector("#detailCategory").textContent = categories[task.category].label;
   document.querySelector("#detailStatus").textContent = task.completed ? "Concluída" : "Pendente";
+  const seriesTasks = task.seriesId ? state.tasks.filter((item) => item.seriesId === task.seriesId) : [];
+  document.querySelector("#detailRecurrence").textContent = seriesTasks.length
+    ? seriesTasks.map((item) => formatDate(item.scheduledDate, { weekday: "short" })).join(", ")
+    : "Não se repete";
+  document.querySelector("#detailReminder").textContent = task.reminderTime ? `Às ${task.reminderTime}` : "Sem lembrete";
   document.querySelector("#detailDescription").textContent = task.description || "Sem detalhes adicionais";
   elements.taskDetailDialog.showModal();
 }
 
-function openEditTask(id) {
+function openEditTask(id, scope = "one") {
   const task = state.tasks.find((item) => item.id === id);
   if (!task) return;
   state.editingTaskId = id;
+  state.editingScope = scope;
   if (elements.taskDetailDialog.open) elements.taskDetailDialog.close();
   elements.taskForm.querySelector(".eyebrow").textContent = "Ajustar passo";
   elements.taskForm.querySelector("h2").textContent = "Editar tarefa";
   elements.taskForm.querySelector('[type="submit"]').textContent = "Salvar alterações";
   elements.taskTitle.value = task.title;
   elements.taskDescription.value = task.description || "";
-  elements.taskDate.value = task.scheduledDate;
-  elements.repeatDaily.checked = false;
-  elements.repeatDaily.closest(".repeat-option").hidden = true;
+  elements.scheduleDays.hidden = scope !== "one";
+  renderScheduleDayOptions([task.scheduledDate], true);
+  elements.reminderEnabled.checked = Boolean(task.reminderTime);
+  elements.reminderTime.value = task.reminderTime || "09:00";
+  elements.reminderTimeRow.hidden = !task.reminderTime;
   elements.taskForm.querySelector(`[name="category"][value="${task.category}"]`).checked = true;
   elements.taskDialog.showModal();
 }
@@ -468,15 +573,17 @@ function validateWeekPlan(plan) {
     const position = index + 1;
     const title = String(task.title || "").trim();
     const category = String(task.category || "").toLowerCase();
-    const day = Number(task.day);
+    const description = String(task.description || "").trim().slice(0, 400);
+    const reminderTime = NextLogic.isValidReminderTime(task.reminderTime) ? task.reminderTime : null;
+    const requestedDays = Array.isArray(task.days) ? task.days.map(Number) : [Number(task.day)];
 
     if (!title) throw new Error(`A tarefa ${position} está sem título.`);
     if (!categories[category]) throw new Error(`A tarefa ${position} possui uma categoria inválida.`);
-    if (!Number.isInteger(day) || day < 1 || day > CYCLE_LENGTH) {
+    if (!requestedDays.length || requestedDays.some((day) => !Number.isInteger(day) || day < 1 || day > CYCLE_LENGTH)) {
       throw new Error(`A tarefa ${position} precisa usar um dia entre 1 e 7.`);
     }
 
-    return { title, category, day, repeatDaily: task.repeatDaily === true };
+    return { title, description, category, reminderTime, days: [...new Set(requestedDays)], repeatDaily: task.repeatDaily === true };
   });
 }
 
@@ -493,11 +600,11 @@ async function importWeekPlan(file) {
     }
 
     for (const importedTask of importedTasks) {
-      const firstIndex = importedTask.day - 1;
+      const firstIndex = importedTask.days[0] - 1;
       const dates = importedTask.repeatDaily
         ? cycleDates(state.activeCycle).slice(firstIndex)
-        : [cycleDates(state.activeCycle)[firstIndex]];
-      const seriesId = importedTask.repeatDaily
+        : importedTask.days.map((day) => cycleDates(state.activeCycle)[day - 1]);
+      const seriesId = dates.length > 1
         ? (crypto.randomUUID?.() || `series-${Date.now()}-${created}`)
         : null;
 
@@ -517,11 +624,14 @@ async function importWeekPlan(file) {
           cycleId: state.activeCycle.id,
           seriesId,
           title: importedTask.title,
+          description: importedTask.description,
           category: importedTask.category,
           scheduledDate,
           completed: false,
           completedAt: null,
           createdAt: new Date().toISOString(),
+          reminderTime: importedTask.reminderTime,
+          reminderSentAt: null,
         };
         task.id = await NextDB.tasks.add(task);
         state.tasks.push(task);
@@ -541,7 +651,7 @@ async function importWeekPlan(file) {
 }
 
 // Converte o ciclo atual para o mesmo formato aceito pela importação.
-// Ocorrências com o mesmo seriesId voltam a ser uma única tarefa diária.
+// Ocorrências com o mesmo seriesId voltam a ser uma única tarefa com vários dias.
 function buildWeekExport() {
   const exportedTasks = [];
   const exportedSeries = new Set();
@@ -553,14 +663,19 @@ function buildWeekExport() {
 
     exportedTasks.push({
       title: task.title,
+      description: task.description || "",
       category: task.category,
-      day: daysBetween(state.activeCycle.startDate, task.scheduledDate) + 1,
-      repeatDaily: Boolean(task.seriesId),
+      reminderTime: task.reminderTime || null,
+      days: task.seriesId
+        ? sortedTasks
+          .filter((item) => item.seriesId === task.seriesId)
+          .map((item) => daysBetween(state.activeCycle.startDate, item.scheduledDate) + 1)
+        : [daysBetween(state.activeCycle.startDate, task.scheduledDate) + 1],
     });
   }
 
   return {
-    version: 1,
+    version: 2,
     objective: state.activeCycle.objective,
     context: {
       duration: "7 dias",
@@ -608,7 +723,12 @@ async function finishCycle(event) {
   // O resumo fica congelado no ciclo encerrado. Alterações futuras em outras
   // semanas não mudam esse resultado histórico.
   state.activeCycle.status = "completed";
-  state.activeCycle.feedback = new FormData(elements.closeCycleForm).get("feedback").trim();
+  const review = new FormData(elements.closeCycleForm);
+  state.activeCycle.feedback = [
+    review.get("wins") && `Funcionou: ${review.get("wins").trim()}`,
+    review.get("obstacles") && `Dificultou: ${review.get("obstacles").trim()}`,
+    review.get("nextFocus") && `Próximo ciclo: ${review.get("nextFocus").trim()}`,
+  ].filter(Boolean).join("\n");
   state.activeCycle.closedAt = new Date().toISOString();
   state.activeCycle.summary = {
     total,
@@ -618,12 +738,54 @@ async function finishCycle(event) {
   await NextDB.cycles.update(state.activeCycle);
 
   state.history.unshift(state.activeCycle);
-  state.activeCycle = await createNextCycle([...state.history, state.activeCycle]);
+  const nextStartDate = [addDays(state.activeCycle.endDate, 1), toDateKey(new Date())].sort().at(-1);
+  state.activeCycle = await createNextCycle([...state.history, state.activeCycle], nextStartDate);
   state.tasks = [];
   state.selectedDate = state.activeCycle.startDate;
   elements.closeCycleForm.reset();
   elements.closeCycleDialog.close();
   render();
+}
+
+// Lembretes locais são verificados enquanto a aplicação está em execução.
+// Para entrega garantida com o app fechado, o mesmo modelo pode ser conectado
+// a um backend de Web Push, conforme documentado em MELHORIAS.md.
+async function requestNotificationPermission() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+    elements.reminderSupportText.textContent = "Este navegador não oferece notificações para esta PWA.";
+    return false;
+  }
+  const permission = await Notification.requestPermission();
+  elements.reminderSupportText.textContent = permission === "granted"
+    ? "Notificações ativadas. O modo local funciona enquanto o app estiver ativo."
+    : "Permissão não concedida. Você pode ativá-la nas configurações do aparelho.";
+  return permission === "granted";
+}
+
+async function showTaskReminder(task) {
+  if (Notification.permission !== "granted") return;
+  const registration = await navigator.serviceWorker.ready;
+  await registration.showNotification("Next7 · Hora da tarefa", {
+    body: task.title,
+    icon: "assets/images/icon.svg",
+    badge: "assets/images/icon.svg",
+    tag: `task-${task.id}-${task.scheduledDate}`,
+    data: { url: `./?task=${task.id}` },
+  });
+  task.reminderSentAt = new Date().toISOString();
+  await NextDB.tasks.update(task);
+}
+
+async function checkTaskReminders() {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const now = new Date();
+  const todayKey = toDateKey(now);
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  for (const task of state.tasks) {
+    if (!task.reminderTime || task.reminderSentAt || task.completed || task.scheduledDate !== todayKey) continue;
+    const [hours, minutes] = task.reminderTime.split(":").map(Number);
+    if (currentMinutes >= hours * 60 + minutes) await showTaskReminder(task);
+  }
 }
 
 // =============================================================
@@ -634,7 +796,7 @@ document.querySelector("#openTaskForm").addEventListener("click", () => openTask
 document.querySelector("#closeTaskForm").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#cancelTask").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#closeTaskDetail").addEventListener("click", () => elements.taskDetailDialog.close());
-document.querySelector("#detailEditTask").addEventListener("click", () => openEditTask(state.detailTaskId));
+document.querySelector("#detailEditTask").addEventListener("click", () => requestSeriesAction("edit", state.detailTaskId));
 document.querySelector("#detailDeleteTask").addEventListener("click", async () => {
   const id = state.detailTaskId;
   elements.taskDetailDialog.close();
@@ -656,8 +818,42 @@ document.querySelector("#openCloseCycle").addEventListener("click", () => {
 document.querySelector("#closeCycleDialogButton").addEventListener("click", () => elements.closeCycleDialog.close());
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
 elements.taskForm.addEventListener("submit", addTask);
+elements.allDays.addEventListener("change", () => {
+  elements.scheduleDaysGrid.querySelectorAll('input[name="scheduledDates"]').forEach((input) => {
+    input.checked = elements.allDays.checked;
+  });
+  elements.scheduleError.hidden = true;
+});
+elements.scheduleDaysGrid.addEventListener("change", () => {
+  const dayInputs = [...elements.scheduleDaysGrid.querySelectorAll('input[name="scheduledDates"]')];
+  elements.allDays.checked = dayInputs.length > 0 && dayInputs.every((input) => input.checked);
+  elements.scheduleError.hidden = true;
+});
 elements.cycleSettingsForm.addEventListener("submit", saveObjective);
 elements.closeCycleForm.addEventListener("submit", finishCycle);
+elements.reminderEnabled.addEventListener("change", () => {
+  elements.reminderTimeRow.hidden = !elements.reminderEnabled.checked;
+});
+document.querySelector("#enableNotifications").addEventListener("click", requestNotificationPermission);
+document.querySelector("#taskTemplates").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-template]");
+  if (!button) return;
+  const [title, category, days] = button.dataset.template.split("|");
+  elements.taskTitle.value = title;
+  elements.taskForm.querySelector(`[name="category"][value="${category}"]`).checked = true;
+  const selectedDays = days === "all" ? cycleDates(state.activeCycle) : days.split(",").map((day) => addDays(state.activeCycle.startDate, Number(day) - 1));
+  renderScheduleDayOptions(selectedDays);
+  elements.allDays.checked = days === "all";
+});
+elements.taskSearch.addEventListener("input", () => {
+  state.search = elements.taskSearch.value.trim().toLowerCase();
+  renderTasks();
+});
+document.querySelector("#closeSeriesAction").addEventListener("click", () => elements.seriesActionDialog.close());
+elements.seriesActionDialog.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-series-scope]");
+  if (button) applySeriesAction(button.dataset.seriesScope);
+});
 
 document.querySelector("#filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");
@@ -676,7 +872,10 @@ async function init() {
 
   try {
     await loadData();
+    await removeLegacyDemoTasks();
     render();
+    checkTaskReminders();
+    setInterval(checkTaskReminders, 30000);
   } catch (error) {
     console.error("Não foi possível carregar o Next7.", error);
     elements.emptyState.hidden = false;
