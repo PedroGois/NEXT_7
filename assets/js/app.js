@@ -19,7 +19,10 @@ const state = {
   tasks: [],
   history: [],
   filter: "all",
+  taskView: "today",
   selectedDate: null,
+  editingTaskId: null,
+  detailTaskId: null,
 };
 
 const elements = {
@@ -41,6 +44,7 @@ const elements = {
   taskDialog: document.querySelector("#taskDialog"),
   taskForm: document.querySelector("#taskForm"),
   taskTitle: document.querySelector("#taskTitle"),
+  taskDescription: document.querySelector("#taskDescription"),
   taskDate: document.querySelector("#taskDate"),
   repeatDaily: document.querySelector("#repeatDaily"),
   closeCycleDialog: document.querySelector("#closeCycleDialog"),
@@ -51,6 +55,7 @@ const elements = {
   importWeekFile: document.querySelector("#importWeekFile"),
   importMessage: document.querySelector("#importMessage"),
   taskTemplate: document.querySelector("#taskTemplate"),
+  taskDetailDialog: document.querySelector("#taskDetailDialog"),
 };
 
 // =============================================================
@@ -193,8 +198,14 @@ function renderWeek() {
 // Troca o dia principal da lista sem abrir o formulário automaticamente.
 function selectDay(dateKey) {
   state.selectedDate = dateKey;
+  const todayKey = toDateKey(new Date());
+  state.taskView = dateKey === todayKey ? "today" : "upcoming";
+  document.querySelectorAll(".task-view-tab").forEach((tab) => {
+    tab.classList.toggle("active", tab.dataset.view === state.taskView);
+  });
   renderWeek();
   renderTasks();
+  document.querySelector("#tasksSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderCategories() {
@@ -222,20 +233,24 @@ function renderCategories() {
 }
 
 function visibleTasks() {
-  const tasksFromSelectedDay = state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
-  if (state.filter === "pending") return tasksFromSelectedDay.filter((task) => !task.completed);
-  if (state.filter === "completed") return tasksFromSelectedDay.filter((task) => task.completed);
-  return tasksFromSelectedDay;
+  const todayKey = toDateKey(new Date());
+  const dates = cycleDates(state.activeCycle);
+  const referenceDate = dates.includes(todayKey) ? todayKey : state.activeCycle.startDate;
+  let visible = state.taskView === "upcoming"
+    ? state.tasks.filter((task) => task.scheduledDate > referenceDate)
+    : state.tasks.filter((task) => task.scheduledDate === referenceDate);
+  if (state.filter === "pending") visible = visible.filter((task) => !task.completed);
+  if (state.filter === "completed") visible = visible.filter((task) => task.completed);
+  return visible;
 }
 
 function renderTasks() {
   const todayKey = toDateKey(new Date());
-  const selectedDayNumber = daysBetween(state.activeCycle.startDate, state.selectedDate) + 1;
-  const isToday = state.selectedDate === todayKey;
-  elements.tasksTitle.textContent = isToday ? "Hoje" : `Dia ${selectedDayNumber}`;
-  elements.selectedDateLabel.textContent = formatDate(state.selectedDate, {
+  const referenceDate = cycleDates(state.activeCycle).includes(todayKey) ? todayKey : state.activeCycle.startDate;
+  elements.tasksTitle.textContent = state.taskView === "today" ? "Tarefas de hoje" : "Próximas do ciclo";
+  elements.selectedDateLabel.textContent = state.taskView === "today" ? formatDate(referenceDate, {
     weekday: "long", day: "2-digit", month: "long",
-  });
+  }) : "Tudo que ainda está planejado para os próximos dias";
 
   const tasks = visibleTasks().sort((a, b) => {
     return a.scheduledDate.localeCompare(b.scheduledDate) || b.createdAt.localeCompare(a.createdAt);
@@ -251,10 +266,13 @@ function renderTasks() {
     item.classList.toggle("completed", task.completed);
     item.querySelector("h3").textContent = task.title;
     const repeatLabel = task.seriesId ? " · repete diariamente" : "";
-    item.querySelector(".task-category").textContent = `${categories[task.category].label}${repeatLabel}`;
+    const dateLabel = state.taskView === "upcoming" ? ` · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}` : "";
+    item.querySelector(".task-category").textContent = `${categories[task.category].label}${dateLabel}${repeatLabel}`;
     check.textContent = task.completed ? "✓" : "";
     check.setAttribute("aria-label", task.completed ? "Marcar como pendente" : "Marcar como concluída");
     check.addEventListener("click", () => toggleTask(task.id));
+    item.querySelector(".view-task").addEventListener("click", () => openTaskDetail(task.id));
+    item.querySelector(".edit-task").addEventListener("click", () => openEditTask(task.id));
     item.querySelector(".delete-task").addEventListener("click", () => deleteTask(task.id));
     elements.taskList.append(item);
   });
@@ -303,6 +321,12 @@ async function saveObjective() {
 }
 
 function openTaskDialog(selectedDate = state.selectedDate) {
+  state.editingTaskId = null;
+  elements.taskForm.reset();
+  elements.repeatDaily.closest(".repeat-option").hidden = false;
+  elements.taskForm.querySelector(".eyebrow").textContent = "Novo passo";
+  elements.taskForm.querySelector("h2").textContent = "Adicionar tarefa";
+  elements.taskForm.querySelector('[type="submit"]').textContent = "Adicionar tarefa";
   elements.taskDate.value = selectedDate;
   elements.taskDialog.showModal();
   requestAnimationFrame(() => elements.taskTitle.focus());
@@ -315,6 +339,20 @@ async function addTask(event) {
   const firstDate = data.get("scheduledDate");
   const shouldRepeat = data.get("repeatDaily") === "on";
   if (!title) return;
+
+  if (state.editingTaskId !== null) {
+    const task = state.tasks.find((item) => item.id === state.editingTaskId);
+    task.title = title;
+    task.description = data.get("description").trim();
+    task.scheduledDate = firstDate;
+    task.category = data.get("category");
+    await NextDB.tasks.update(task);
+    state.editingTaskId = null;
+    elements.taskForm.reset();
+    elements.taskDialog.close();
+    render();
+    return;
+  }
 
   // Uma repetição vira tarefas independentes, uma por dia. Isso deixa cada
   // ocorrência concluível separadamente e mantém o modelo fácil de entender.
@@ -331,6 +369,7 @@ async function addTask(event) {
       cycleId: state.activeCycle.id,
       seriesId,
       title,
+      description: data.get("description").trim(),
       category: data.get("category"),
       scheduledDate,
       completed: false,
@@ -356,9 +395,40 @@ async function toggleTask(id) {
 }
 
 async function deleteTask(id) {
+  if (!confirm("Excluir esta tarefa? Essa ação não pode ser desfeita.")) return;
   await NextDB.tasks.remove(id);
   state.tasks = state.tasks.filter((task) => task.id !== id);
   render();
+}
+
+function openTaskDetail(id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task) return;
+  state.detailTaskId = id;
+  document.querySelector("#detailTaskTitle").textContent = task.title;
+  document.querySelector("#detailObjective").textContent = state.activeCycle.objective || "Nenhum objetivo definido";
+  document.querySelector("#detailDate").textContent = formatDate(task.scheduledDate, { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  document.querySelector("#detailCategory").textContent = categories[task.category].label;
+  document.querySelector("#detailStatus").textContent = task.completed ? "Concluída" : "Pendente";
+  document.querySelector("#detailDescription").textContent = task.description || "Sem detalhes adicionais";
+  elements.taskDetailDialog.showModal();
+}
+
+function openEditTask(id) {
+  const task = state.tasks.find((item) => item.id === id);
+  if (!task) return;
+  state.editingTaskId = id;
+  if (elements.taskDetailDialog.open) elements.taskDetailDialog.close();
+  elements.taskForm.querySelector(".eyebrow").textContent = "Ajustar passo";
+  elements.taskForm.querySelector("h2").textContent = "Editar tarefa";
+  elements.taskForm.querySelector('[type="submit"]').textContent = "Salvar alterações";
+  elements.taskTitle.value = task.title;
+  elements.taskDescription.value = task.description || "";
+  elements.taskDate.value = task.scheduledDate;
+  elements.repeatDaily.checked = false;
+  elements.repeatDaily.closest(".repeat-option").hidden = true;
+  elements.taskForm.querySelector(`[name="category"][value="${task.category}"]`).checked = true;
+  elements.taskDialog.showModal();
 }
 
 // =============================================================
@@ -546,6 +616,13 @@ async function finishCycle(event) {
 document.querySelector("#openTaskForm").addEventListener("click", () => openTaskDialog());
 document.querySelector("#closeTaskForm").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#cancelTask").addEventListener("click", () => elements.taskDialog.close());
+document.querySelector("#closeTaskDetail").addEventListener("click", () => elements.taskDetailDialog.close());
+document.querySelector("#detailEditTask").addEventListener("click", () => openEditTask(state.detailTaskId));
+document.querySelector("#detailDeleteTask").addEventListener("click", async () => {
+  const id = state.detailTaskId;
+  elements.taskDetailDialog.close();
+  await deleteTask(id);
+});
 document.querySelector("#saveObjective").addEventListener("click", saveObjective);
 elements.importWeekButton.addEventListener("click", () => elements.importWeekFile.click());
 elements.exportWeekButton.addEventListener("click", exportWeekPlan);
@@ -558,6 +635,14 @@ document.querySelector("#closeCycleDialogButton").addEventListener("click", () =
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
 elements.taskForm.addEventListener("submit", addTask);
 elements.closeCycleForm.addEventListener("submit", finishCycle);
+
+document.querySelector(".task-view-tabs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-view]");
+  if (!button) return;
+  state.taskView = button.dataset.view;
+  document.querySelectorAll(".task-view-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
+  renderTasks();
+});
 
 document.querySelector("#filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");

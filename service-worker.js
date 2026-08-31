@@ -3,7 +3,7 @@
 // =============================================================
 // Sempre que arquivos importantes mudarem, altere o nome do cache.
 // Isso força a instalação da versão nova nos celulares.
-const CACHE_NAME = "next7-v3";
+const CACHE_NAME = "next7-v5";
 
 const APP_FILES = [
   "./",
