@@ -64,7 +64,11 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .cycle-summary { min-width: 0; }
 .cycle-meta { display: flex; align-items: center; gap: 9px; margin-bottom: 5px; color: var(--muted); font-size: .75rem; }
 .cycle-badge { padding: 6px 10px; border-radius: 99px; color: var(--accent); background: var(--accent-dark); font-weight: 700; }
-.cycle-objective-display { overflow: hidden; margin: 0; color: var(--text); font-size: .86rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.cycle-objective-display { overflow: hidden; margin: 0; color: var(--text); font-size: .86rem; font-weight: 600; white-space: nowrap; }
+.cycle-objective-display span { display: inline-block; min-width: 100%; padding-left: 100%; animation: objective-marquee 12s linear infinite; }
+.cycle-objective-display:hover span { animation-play-state: paused; }
+@keyframes objective-marquee { to { transform: translateX(-100%); } }
+@media (prefers-reduced-motion: reduce) { .cycle-objective-display span { padding-left: 0; animation: none; } }
 .cycle-settings-button { display: grid; flex: 0 0 auto; place-items: center; width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 10px; color: var(--accent); background: var(--surface-light); cursor: pointer; }
 .cycle-settings-button:hover { border-color: var(--accent); }
 .cycle-settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
