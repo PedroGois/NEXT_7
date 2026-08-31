@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#101114">
+  <meta name="description" content="Dashboard pessoal para acompanhar tarefas e evolução em Corpo, Carreira, Vida e Mente.">
+  <title>Next7 — Evolução em ciclos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Página inicial do Next">
+        <span class="brand-mark">N</span>
+        <span>next7<span class="brand-dot">.</span></span>
+      </a>
+      <div class="today" id="today"></div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Seu progresso, todos os dias</p>
+          <h1>Qual é o seu próximo passo?</h1>
+          <p class="hero-copy">Organize o que importa e avance com equilíbrio nas quatro áreas da sua vida.</p>
+        </div>
+        <button class="primary-button" id="openTaskForm" type="button">
+          <span aria-hidden="true">+</span> Nova tarefa
+        </button>
+      </section>
+
+      <section class="cycle-panel" aria-labelledby="cycleTitle">
+        <div class="cycle-main">
+          <div class="cycle-meta">
+            <span class="cycle-badge" id="cycleNumber">Ciclo 1 de 12</span>
+            <span id="cyclePeriod"></span>
+          </div>
+          <label for="cycleObjective">Objetivo deste ciclo</label>
+          <div class="objective-row">
+            <input id="cycleObjective" type="text" maxlength="140" placeholder="Ex.: Retomar minha rotina com consistência">
+            <button class="secondary-button" id="saveObjective" type="button">Salvar objetivo</button>
+          </div>
+        </div>
+        <div class="cycle-actions">
+          <div class="cycle-progress"><strong id="cycleDay">Dia 1</strong><span>de 7</span></div>
+          <button class="text-button" id="openCloseCycle" type="button">Encerrar ciclo</button>
+        </div>
+      </section>
+
+      <section class="week-section" aria-labelledby="weekTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Próximos 7 dias</p>
+            <h2 id="weekTitle">Seu ciclo atual</h2>
+          </div>
+        </div>
+        <div class="week-grid" id="weekGrid"></div>
+      </section>
+
+      <section class="overview" aria-labelledby="overviewTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Visão geral</p>
+            <h2 id="overviewTitle">Seu equilíbrio</h2>
+          </div>
+          <p class="progress-label"><strong id="totalCompleted">0</strong> de <span id="totalTasks">0</span> concluídas</p>
+        </div>
+
+        <div class="category-grid" id="categoryGrid"></div>
+      </section>
+
+      <section class="history-section" aria-labelledby="historyTitle">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Evolução</p>
+            <h2 id="historyTitle">Histórico de ciclos</h2>
+          </div>
+        </div>
+        <div class="history-list" id="historyList"></div>
+        <div class="empty-history" id="emptyHistory">Seus ciclos encerrados aparecerão aqui.</div>
+      </section>
+
+      <section class="tasks-section" aria-labelledby="tasksTitle">
+        <div class="section-heading tasks-heading">
+          <div>
+            <p class="eyebrow">Foco</p>
+            <h2 id="tasksTitle">Suas tarefas</h2>
+          </div>
+          <div class="filters" id="filters" aria-label="Filtrar tarefas">
+            <button class="filter active" data-filter="all" type="button">Todas</button>
+            <button class="filter" data-filter="pending" type="button">Pendentes</button>
+            <button class="filter" data-filter="completed" type="button">Concluídas</button>
+          </div>
+        </div>
+
+        <div class="task-list" id="taskList"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <span aria-hidden="true">✓</span>
+          <h3>Nenhuma tarefa por aqui</h3>
+          <p>Crie um próximo passo para começar a avançar.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="task-dialog" id="taskDialog">
+    <form class="task-form" id="taskForm" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Novo passo</p>
+          <h2>Adicionar tarefa</h2>
+        </div>
+        <button class="icon-button" id="closeTaskForm" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <label for="taskTitle">O que você quer realizar?</label>
+      <input id="taskTitle" name="title" type="text" maxlength="100" placeholder="Ex.: Treinar por 30 minutos" required autofocus>
+
+      <label for="taskDate">Dia planejado</label>
+      <select id="taskDate" name="scheduledDate" required></select>
+
+      <fieldset>
+        <legend>Área da vida</legend>
+        <div class="category-options">
+          <label><input type="radio" name="category" value="corpo" checked><span>Corpo</span></label>
+          <label><input type="radio" name="category" value="carreira"><span>Carreira</span></label>
+          <label><input type="radio" name="category" value="vida"><span>Vida</span></label>
+          <label><input type="radio" name="category" value="mente"><span>Mente</span></label>
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button class="secondary-button" id="cancelTask" type="button">Cancelar</button>
+        <button class="primary-button" type="submit">Adicionar tarefa</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="closeCycleDialog">
+    <form class="task-form" id="closeCycleForm" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Fechamento semanal</p>
+          <h2>Encerrar este ciclo?</h2>
+        </div>
+        <button class="icon-button" id="closeCycleDialogButton" type="button" aria-label="Fechar">×</button>
+      </div>
+      <p class="dialog-copy" id="closeCycleSummary"></p>
+      <label for="cycleFeedback">Como foi sua semana?</label>
+      <textarea id="cycleFeedback" name="feedback" rows="5" maxlength="600" placeholder="O que funcionou, o que aprendi e o que quero melhorar..."></textarea>
+      <p class="form-note">As tarefas e o resultado serão guardados no histórico. Um novo ciclo começará hoje.</p>
+      <div class="form-actions">
+        <button class="secondary-button" id="cancelCloseCycle" type="button">Continuar ciclo</button>
+        <button class="primary-button" type="submit">Salvar e encerrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <template id="taskTemplate">
+    <article class="task-item">
+      <button class="task-check" type="button" aria-label="Marcar tarefa como concluída"></button>
+      <div class="task-content">
+        <h3></h3>
+        <span class="task-category"></span>
+      </div>
+      <button class="delete-task" type="button" aria-label="Excluir tarefa">×</button>
+    </article>
+  </template>
+
+  <script src="assets/js/db.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
