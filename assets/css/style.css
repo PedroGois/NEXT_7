@@ -105,6 +105,10 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .category-card small { font-size: .75rem; }
 
 .tasks-section { margin-top: 24px; }
+.day-navigation { display: flex; gap: 6px; margin-bottom: 18px; padding-bottom: 3px; overflow-x: auto; scrollbar-width: none; }
+.day-navigation::-webkit-scrollbar { display: none; }
+.day-navigation-button { flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: .76rem; font-weight: 700; text-transform: capitalize; cursor: pointer; }
+.day-navigation-button:hover, .day-navigation-button.active { color: #17200c; border-color: var(--accent); background: var(--accent); }
 .sticky-filters { position: sticky; z-index: 2; top: 0; margin-bottom: 20px; padding: 12px 0; background: var(--bg); }
 .sticky-filters .filters { width: max-content; margin-top: 10px; }
 .task-view-tabs { display: inline-flex; gap: 5px; margin-bottom: 24px; padding: 5px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
@@ -129,12 +133,13 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .task-item.completed .task-check { color: #17200c; border-color: var(--accent); background: var(--accent); }
 .task-item.completed h3 { text-decoration: line-through; }
 .task-actions { display: flex; align-items: center; gap: 5px; }
-.view-task, .edit-task { padding: 7px 9px; border: 0; border-radius: 8px; color: var(--muted); background: var(--surface-light); font-size: .72rem; font-weight: 700; cursor: pointer; }
+.view-task, .edit-task { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: var(--surface-light); font-size: .78rem; font-weight: 700; cursor: pointer; }
 .view-task:hover, .edit-task:hover { color: var(--text); }
 .delete-task, .icon-button { border: 0; color: var(--muted); background: transparent; font-size: 1.4rem; cursor: pointer; }
 .delete-task { opacity: 0; transition: opacity .2s, color .2s; }
 .task-item:hover .delete-task, .delete-task:focus { opacity: 1; }
 .delete-task:hover { color: #ff7557; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .empty-state { padding: 55px 20px; border: 1px dashed rgba(255,255,255,.12); border-radius: var(--radius-lg); color: var(--muted); text-align: center; }
 .empty-state :is(span, i) { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%; color: var(--accent); background: var(--accent-dark); }

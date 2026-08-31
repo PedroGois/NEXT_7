@@ -31,7 +31,7 @@ const elements = {
   cyclePeriod: document.querySelector("#cyclePeriod"),
   cycleDay: document.querySelector("#cycleDay"),
   cycleObjective: document.querySelector("#cycleObjective"),
-  weekGrid: document.querySelector("#weekGrid"),
+  dayNavigation: document.querySelector("#dayNavigation"),
   categoryGrid: document.querySelector("#categoryGrid"),
   taskList: document.querySelector("#taskList"),
   tasksTitle: document.querySelector("#tasksTitle"),
@@ -175,10 +175,29 @@ function renderWeek() {
   });
 }
 
+function renderDayNavigation() {
+  const todayKey = toDateKey(new Date());
+  elements.dayNavigation.innerHTML = "";
+
+  cycleDates(state.activeCycle).forEach((dateKey) => {
+    const date = fromDateKey(dateKey);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "day-navigation-button";
+    button.classList.toggle("active", dateKey === state.selectedDate);
+    button.textContent = dateKey === todayKey
+      ? "Hoje"
+      : new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit" }).format(date).replace(".", "");
+    button.setAttribute("aria-label", formatDate(dateKey, { weekday: "long", day: "2-digit", month: "long" }));
+    button.addEventListener("click", () => selectDay(dateKey));
+    elements.dayNavigation.append(button);
+  });
+}
+
 // Troca o dia principal da lista sem abrir o formulário automaticamente.
 function selectDay(dateKey) {
   state.selectedDate = dateKey;
-  renderWeek();
+  renderDayNavigation();
   renderTasks();
 }
 
@@ -212,7 +231,7 @@ function renderCategories() {
 }
 
 function visibleTasks() {
-  let visible = [...state.tasks];
+  let visible = state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
   if (state.categoryFilter !== "all") visible = visible.filter((task) => task.category === state.categoryFilter);
   if (state.filter === "pending") visible = visible.filter((task) => !task.completed);
   if (state.filter === "completed") visible = visible.filter((task) => task.completed);
@@ -221,8 +240,11 @@ function visibleTasks() {
 
 function renderTasks() {
   const activeCategory = categories[state.categoryFilter];
-  elements.tasksTitle.textContent = activeCategory ? activeCategory.label : "Suas tarefas";
-  elements.selectedDateLabel.textContent = activeCategory ? activeCategory.message : "Tudo em um só lugar.";
+  const isToday = state.selectedDate === toDateKey(new Date());
+  elements.tasksTitle.textContent = isToday ? "Hoje" : formatDate(state.selectedDate, { weekday: "long" });
+  elements.selectedDateLabel.textContent = activeCategory
+    ? `${activeCategory.label} · ${activeCategory.message}`
+    : formatDate(state.selectedDate, { day: "2-digit", month: "long" });
 
   const tasks = visibleTasks().sort((a, b) => {
     return a.scheduledDate.localeCompare(b.scheduledDate) || b.createdAt.localeCompare(a.createdAt);
@@ -276,6 +298,7 @@ function renderHistory() {
 function render() {
   renderCycleHeader();
   renderWeek();
+  renderDayNavigation();
   renderCategories();
   renderTasks();
 }

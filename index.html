@@ -55,6 +55,7 @@
       <p class="import-message" id="importMessage" role="status" hidden></p>
 
       <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
+        <nav class="day-navigation" id="dayNavigation" aria-label="Selecionar dia das tarefas"></nav>
         <div class="section-heading tasks-heading">
           <div>
             <p class="eyebrow">Ciclo atual</p>
@@ -178,8 +179,8 @@
         <span class="task-category"></span>
       </div>
       <div class="task-actions">
-        <button class="view-task" type="button" aria-label="Visualizar tarefa">Ver</button>
-        <button class="edit-task" type="button" aria-label="Editar tarefa">Editar</button>
+        <button class="view-task" type="button" aria-label="Visualizar tarefa"><i class="fa-solid fa-eye" aria-hidden="true"></i><span class="sr-only">Visualizar</span></button>
+        <button class="edit-task" type="button" aria-label="Editar tarefa"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i><span class="sr-only">Editar</span></button>
         <button class="delete-task" type="button" aria-label="Excluir tarefa"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
       </div>
     </article>
