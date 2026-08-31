@@ -29,8 +29,10 @@ const elements = {
   today: document.querySelector("#today"),
   cycleNumber: document.querySelector("#cycleNumber"),
   cyclePeriod: document.querySelector("#cyclePeriod"),
-  cycleDay: document.querySelector("#cycleDay"),
   cycleObjective: document.querySelector("#cycleObjective"),
+  cycleObjectiveDisplay: document.querySelector("#cycleObjectiveDisplay"),
+  cycleSettingsDialog: document.querySelector("#cycleSettingsDialog"),
+  cycleSettingsForm: document.querySelector("#cycleSettingsForm"),
   dayNavigation: document.querySelector("#dayNavigation"),
   categoryGrid: document.querySelector("#categoryGrid"),
   taskList: document.querySelector("#taskList"),
@@ -155,13 +157,10 @@ async function loadData() {
 
 function renderCycleHeader() {
   const cycle = state.activeCycle;
-  const todayKey = toDateKey(new Date());
-  const currentDay = Math.min(CYCLE_LENGTH, Math.max(1, daysBetween(cycle.startDate, todayKey) + 1));
-
   elements.cycleNumber.textContent = `Ciclo ${cycle.number} de ${PROGRAM_LENGTH}`;
   elements.cyclePeriod.textContent = `${formatDate(cycle.startDate)} — ${formatDate(cycle.endDate)}`;
-  elements.cycleDay.textContent = `Dia ${currentDay}`;
   elements.cycleObjective.value = cycle.objective;
+  elements.cycleObjectiveDisplay.textContent = cycle.objective || "Defina o foco deste ciclo.";
 }
 
 function renderWeek() {
@@ -177,17 +176,22 @@ function renderWeek() {
 
 function renderDayNavigation() {
   const todayKey = toDateKey(new Date());
+  const cycleDays = cycleDates(state.activeCycle);
+  const firstVisibleDay = cycleDays.includes(todayKey) ? todayKey : state.activeCycle.startDate;
+  const tomorrowKey = addDays(firstVisibleDay, 1);
   elements.dayNavigation.innerHTML = "";
 
-  cycleDates(state.activeCycle).forEach((dateKey) => {
+  cycleDays.filter((dateKey) => dateKey >= firstVisibleDay).forEach((dateKey) => {
     const date = fromDateKey(dateKey);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "day-navigation-button";
     button.classList.toggle("active", dateKey === state.selectedDate);
-    button.textContent = dateKey === todayKey
+    button.textContent = dateKey === firstVisibleDay
       ? "Hoje"
-      : new Intl.DateTimeFormat("pt-BR", { weekday: "short", day: "2-digit" }).format(date).replace(".", "");
+      : dateKey === tomorrowKey
+        ? "Amanhã"
+        : new Intl.DateTimeFormat("pt-BR", { weekday: "long" }).format(date);
     button.setAttribute("aria-label", formatDate(dateKey, { weekday: "long", day: "2-digit", month: "long" }));
     button.addEventListener("click", () => selectDay(dateKey));
     elements.dayNavigation.append(button);
@@ -307,10 +311,12 @@ function render() {
 // 5. AÇÕES: OBJETIVO E TAREFAS
 // =============================================================
 
-async function saveObjective() {
+async function saveObjective(event) {
+  event.preventDefault();
   state.activeCycle.objective = elements.cycleObjective.value.trim();
   await NextDB.cycles.update(state.activeCycle);
-  elements.cycleObjective.blur();
+  elements.cycleSettingsDialog.close();
+  renderCycleHeader();
 }
 
 function openTaskDialog(selectedDate = state.selectedDate) {
@@ -616,17 +622,23 @@ document.querySelector("#detailDeleteTask").addEventListener("click", async () =
   elements.taskDetailDialog.close();
   await deleteTask(id);
 });
-document.querySelector("#saveObjective").addEventListener("click", saveObjective);
+document.querySelector("#openCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.showModal());
+document.querySelector("#closeCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.close());
+document.querySelector("#cancelCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.close());
 elements.importWeekButton.addEventListener("click", () => elements.importWeekFile.click());
 elements.exportWeekButton.addEventListener("click", exportWeekPlan);
 elements.importWeekFile.addEventListener("change", () => {
   const [file] = elements.importWeekFile.files;
   if (file) importWeekPlan(file);
 });
-document.querySelector("#openCloseCycle").addEventListener("click", openCloseCycleDialog);
+document.querySelector("#openCloseCycle").addEventListener("click", () => {
+  elements.cycleSettingsDialog.close();
+  openCloseCycleDialog();
+});
 document.querySelector("#closeCycleDialogButton").addEventListener("click", () => elements.closeCycleDialog.close());
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
 elements.taskForm.addEventListener("submit", addTask);
+elements.cycleSettingsForm.addEventListener("submit", saveObjective);
 elements.closeCycleForm.addEventListener("submit", finishCycle);
 
 document.querySelector("#filters").addEventListener("click", (event) => {

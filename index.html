@@ -30,26 +30,14 @@
 
     <main>
       <section class="cycle-panel" aria-labelledby="cycleTitle">
-        <div class="cycle-main">
+        <div class="cycle-summary">
           <div class="cycle-meta">
             <span class="cycle-badge" id="cycleNumber">Ciclo 1 de 12</span>
             <span id="cyclePeriod"></span>
           </div>
-          <label for="cycleObjective">Objetivo deste ciclo</label>
-          <div class="objective-row">
-            <input id="cycleObjective" type="text" maxlength="140" placeholder="Ex.: Retomar minha rotina com consistência">
-            <button class="secondary-button" id="saveObjective" type="button">Salvar objetivo</button>
-          </div>
+          <p class="cycle-objective-display" id="cycleObjectiveDisplay">Defina o foco deste ciclo.</p>
         </div>
-        <div class="cycle-actions">
-          <div class="cycle-progress"><strong id="cycleDay">Dia 1</strong><span>de 7</span></div>
-          <div class="cycle-action-buttons">
-            <button class="text-button" id="importWeekButton" type="button">Importar semana</button>
-            <button class="text-button" id="exportWeekButton" type="button">Exportar semana</button>
-            <button class="text-button" id="openCloseCycle" type="button">Encerrar ciclo</button>
-          </div>
-          <input id="importWeekFile" type="file" accept="application/json,.json" hidden>
-        </div>
+        <button class="cycle-settings-button" id="openCycleSettings" type="button" aria-label="Configurar ciclo"><i class="fa-solid fa-sliders" aria-hidden="true"></i></button>
       </section>
 
       <p class="import-message" id="importMessage" role="status" hidden></p>
@@ -124,6 +112,33 @@
       <div class="form-actions">
         <button class="secondary-button" id="cancelTask" type="button">Cancelar</button>
         <button class="primary-button" type="submit">Adicionar tarefa</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="task-dialog" id="cycleSettingsDialog">
+    <form class="task-form" id="cycleSettingsForm" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">Ciclo atual</p>
+          <h2>Configurar ciclo</h2>
+        </div>
+        <button class="icon-button" id="closeCycleSettings" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+      </div>
+
+      <label for="cycleObjective">Objetivo deste ciclo</label>
+      <input id="cycleObjective" type="text" maxlength="140" placeholder="Ex.: Retomar minha rotina com consistência">
+
+      <div class="cycle-settings-actions">
+        <button class="secondary-button" id="importWeekButton" type="button"><i class="fa-solid fa-file-import" aria-hidden="true"></i> Importar</button>
+        <button class="secondary-button" id="exportWeekButton" type="button"><i class="fa-solid fa-file-export" aria-hidden="true"></i> Exportar</button>
+      </div>
+      <input id="importWeekFile" type="file" accept="application/json,.json" hidden>
+
+      <button class="cycle-danger-action" id="openCloseCycle" type="button"><i class="fa-solid fa-flag-checkered" aria-hidden="true"></i> Encerrar ciclo</button>
+      <div class="form-actions">
+        <button class="secondary-button" id="cancelCycleSettings" type="button">Cancelar</button>
+        <button class="primary-button" id="saveObjective" type="submit">Salvar</button>
       </div>
     </form>
   </dialog>
