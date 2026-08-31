@@ -19,7 +19,7 @@ const state = {
   tasks: [],
   history: [],
   filter: "all",
-  taskView: "today",
+  categoryFilter: "all",
   selectedDate: null,
   editingTaskId: null,
   detailTaskId: null,
@@ -165,29 +165,9 @@ function renderCycleHeader() {
 }
 
 function renderWeek() {
-  const todayKey = toDateKey(new Date());
-  elements.weekGrid.innerHTML = "";
   elements.taskDate.innerHTML = "";
 
   cycleDates(state.activeCycle).forEach((dateKey, index) => {
-    const tasks = state.tasks.filter((task) => task.scheduledDate === dateKey);
-    const completed = tasks.filter((task) => task.completed).length;
-    const date = fromDateKey(dateKey);
-    const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "short" }).format(date).replace(".", "");
-
-    const dayCard = document.createElement("button");
-    dayCard.type = "button";
-    dayCard.className = "day-card";
-    dayCard.classList.toggle("today-card", dateKey === todayKey);
-    dayCard.classList.toggle("selected-day", dateKey === state.selectedDate);
-    dayCard.innerHTML = `
-      <span>Dia ${index + 1}</span>
-      <strong>${weekday}, ${String(date.getDate()).padStart(2, "0")}</strong>
-      <small>${completed}/${tasks.length} concluídas</small>
-    `;
-    dayCard.addEventListener("click", () => selectDay(dateKey));
-    elements.weekGrid.append(dayCard);
-
     const option = document.createElement("option");
     option.value = dateKey;
     option.textContent = `Dia ${index + 1} — ${formatDate(dateKey, { weekday: "long", day: "2-digit", month: "2-digit" })}`;
@@ -198,14 +178,8 @@ function renderWeek() {
 // Troca o dia principal da lista sem abrir o formulário automaticamente.
 function selectDay(dateKey) {
   state.selectedDate = dateKey;
-  const todayKey = toDateKey(new Date());
-  state.taskView = dateKey === todayKey ? "today" : "upcoming";
-  document.querySelectorAll(".task-view-tab").forEach((tab) => {
-    tab.classList.toggle("active", tab.dataset.view === state.taskView);
-  });
   renderWeek();
   renderTasks();
-  document.querySelector("#tasksSection").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderCategories() {
@@ -215,48 +189,48 @@ function renderCategories() {
     const tasks = state.tasks.filter((task) => task.category === key);
     const completed = tasks.filter((task) => task.completed).length;
     const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
-    const card = document.createElement("article");
-    card.className = "category-card";
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "category-card category-filter";
+    card.classList.toggle("active", state.categoryFilter === key);
     card.style.setProperty("--category-color", category.color);
     card.innerHTML = `
       <div class="category-top">
         <span class="category-icon">${category.icon}</span>
-        <span class="category-percentage">${progress}%</span>
+        <span class="category-percentage">${tasks.length}</span>
       </div>
       <h3>${category.label}</h3>
-      <p>${category.message}</p>
-      <div class="progress-track"><span style="width: ${progress}%"></span></div>
-      <small>${completed} de ${tasks.length} tarefas</small>
+      <small>${completed} concluída(s)</small>
     `;
+    card.addEventListener("click", () => {
+      state.categoryFilter = state.categoryFilter === key ? "all" : key;
+      renderCategories();
+      renderTasks();
+    });
     elements.categoryGrid.append(card);
   });
 }
 
 function visibleTasks() {
-  const todayKey = toDateKey(new Date());
-  const dates = cycleDates(state.activeCycle);
-  const referenceDate = dates.includes(todayKey) ? todayKey : state.activeCycle.startDate;
-  let visible = state.taskView === "upcoming"
-    ? state.tasks.filter((task) => task.scheduledDate > referenceDate)
-    : state.tasks.filter((task) => task.scheduledDate === referenceDate);
+  let visible = [...state.tasks];
+  if (state.categoryFilter !== "all") visible = visible.filter((task) => task.category === state.categoryFilter);
   if (state.filter === "pending") visible = visible.filter((task) => !task.completed);
   if (state.filter === "completed") visible = visible.filter((task) => task.completed);
   return visible;
 }
 
 function renderTasks() {
-  const todayKey = toDateKey(new Date());
-  const referenceDate = cycleDates(state.activeCycle).includes(todayKey) ? todayKey : state.activeCycle.startDate;
-  elements.tasksTitle.textContent = state.taskView === "today" ? "Tarefas de hoje" : "Próximas do ciclo";
-  elements.selectedDateLabel.textContent = state.taskView === "today" ? formatDate(referenceDate, {
-    weekday: "long", day: "2-digit", month: "long",
-  }) : "Tudo que ainda está planejado para os próximos dias";
+  const activeCategory = categories[state.categoryFilter];
+  elements.tasksTitle.textContent = activeCategory ? activeCategory.label : "Suas tarefas";
+  elements.selectedDateLabel.textContent = activeCategory ? activeCategory.message : "Tudo em um só lugar.";
 
   const tasks = visibleTasks().sort((a, b) => {
     return a.scheduledDate.localeCompare(b.scheduledDate) || b.createdAt.localeCompare(a.createdAt);
   });
   elements.taskList.innerHTML = "";
   elements.emptyState.hidden = tasks.length > 0;
+  elements.emptyState.querySelector("h3").textContent = "Nenhuma tarefa neste filtro";
+  elements.emptyState.querySelector("p").textContent = "Ajuste os filtros ou crie uma nova tarefa.";
 
   tasks.forEach((task) => {
     const item = elements.taskTemplate.content.firstElementChild.cloneNode(true);
@@ -266,7 +240,7 @@ function renderTasks() {
     item.classList.toggle("completed", task.completed);
     item.querySelector("h3").textContent = task.title;
     const repeatLabel = task.seriesId ? " · repete diariamente" : "";
-    const dateLabel = state.taskView === "upcoming" ? ` · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}` : "";
+    const dateLabel = ` · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}`;
     item.querySelector(".task-category").textContent = `${categories[task.category].label}${dateLabel}${repeatLabel}`;
     check.textContent = task.completed ? "✓" : "";
     check.setAttribute("aria-label", task.completed ? "Marcar como pendente" : "Marcar como concluída");
@@ -300,14 +274,10 @@ function renderHistory() {
 }
 
 function render() {
-  const completed = state.tasks.filter((task) => task.completed).length;
-  elements.totalCompleted.textContent = completed;
-  elements.totalTasks.textContent = state.tasks.length;
   renderCycleHeader();
   renderWeek();
   renderCategories();
   renderTasks();
-  renderHistory();
 }
 
 // =============================================================
@@ -635,14 +605,6 @@ document.querySelector("#closeCycleDialogButton").addEventListener("click", () =
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
 elements.taskForm.addEventListener("submit", addTask);
 elements.closeCycleForm.addEventListener("submit", finishCycle);
-
-document.querySelector(".task-view-tabs").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-view]");
-  if (!button) return;
-  state.taskView = button.dataset.view;
-  document.querySelectorAll(".task-view-tab").forEach((tab) => tab.classList.toggle("active", tab === button));
-  renderTasks();
-});
 
 document.querySelector("#filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");

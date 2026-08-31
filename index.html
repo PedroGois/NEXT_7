@@ -24,20 +24,10 @@
         <span>next7<span class="brand-dot">.</span></span>
       </a>
       <div class="today" id="today"></div>
+      <button class="primary-button compact-add" id="openTaskForm" type="button"><span aria-hidden="true">+</span> Tarefa</button>
     </header>
 
     <main>
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Seu progresso, todos os dias</p>
-          <h1>Qual é o seu próximo passo?</h1>
-          <p class="hero-copy">Organize o que importa e avance com equilíbrio nas quatro áreas da sua vida.</p>
-        </div>
-        <button class="primary-button" id="openTaskForm" type="button">
-          <span aria-hidden="true">+</span> Nova tarefa
-        </button>
-      </section>
-
       <section class="cycle-panel" aria-labelledby="cycleTitle">
         <div class="cycle-main">
           <div class="cycle-meta">
@@ -63,28 +53,18 @@
 
       <p class="import-message" id="importMessage" role="status" hidden></p>
 
-      <section class="week-section" aria-labelledby="weekTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Próximos 7 dias</p>
-            <h2 id="weekTitle">Seu ciclo atual</h2>
-          </div>
-        </div>
-        <div class="week-grid" id="weekGrid"></div>
-      </section>
-
       <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
-        <nav class="task-view-tabs" aria-label="Visualização das tarefas">
-          <button class="task-view-tab active" data-view="today" type="button">Hoje</button>
-          <button class="task-view-tab" data-view="upcoming" type="button">Próximas do ciclo</button>
-        </nav>
         <div class="section-heading tasks-heading">
           <div>
-            <p class="eyebrow">Foco do dia</p>
-            <h2 id="tasksTitle">Hoje</h2>
-            <p class="selected-date" id="selectedDateLabel"></p>
+            <p class="eyebrow">Ciclo atual</p>
+            <h2 id="tasksTitle">Suas tarefas</h2>
+            <p class="selected-date" id="selectedDateLabel">Tudo em um só lugar.</p>
           </div>
-          <div class="filters" id="filters" aria-label="Filtrar tarefas">
+        </div>
+
+        <div class="sticky-filters">
+          <div class="category-grid category-filters" id="categoryGrid" aria-label="Filtrar por pilar"></div>
+          <div class="filters" id="filters" aria-label="Filtrar por status">
             <button class="filter active" data-filter="all" type="button">Todas</button>
             <button class="filter" data-filter="pending" type="button">Pendentes</button>
             <button class="filter" data-filter="completed" type="button">Concluídas</button>
@@ -97,29 +77,6 @@
           <h3>Nenhuma tarefa neste dia</h3>
           <p>Crie um novo passo ou confira as próximas tarefas do ciclo.</p>
         </div>
-      </section>
-
-      <section class="overview" aria-labelledby="overviewTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Visão geral</p>
-            <h2 id="overviewTitle">Seu equilíbrio</h2>
-          </div>
-          <p class="progress-label"><strong id="totalCompleted">0</strong> de <span id="totalTasks">0</span> concluídas</p>
-        </div>
-
-        <div class="category-grid" id="categoryGrid"></div>
-      </section>
-
-      <section class="history-section" aria-labelledby="historyTitle">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Evolução</p>
-            <h2 id="historyTitle">Histórico de ciclos</h2>
-          </div>
-        </div>
-        <div class="history-list" id="historyList"></div>
-        <div class="empty-history" id="emptyHistory">Seus ciclos encerrados aparecerão aqui.</div>
       </section>
 
     </main>
