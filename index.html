@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
         <span>next7<span class="brand-dot">.</span></span>
       </a>
       <div class="today" id="today"></div>
-      <button class="primary-button compact-add" id="openTaskForm" type="button"><span aria-hidden="true">+</span> Tarefa</button>
+      <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
     </header>
 
     <main>
@@ -73,7 +74,7 @@
 
         <div class="task-list" id="taskList"></div>
         <div class="empty-state" id="emptyState" hidden>
-          <span aria-hidden="true">✓</span>
+          <i class="fa-solid fa-check" aria-hidden="true"></i>
           <h3>Nenhuma tarefa neste dia</h3>
           <p>Crie um novo passo ou confira as próximas tarefas do ciclo.</p>
         </div>
@@ -89,7 +90,7 @@
           <p class="eyebrow">Novo passo</p>
           <h2>Adicionar tarefa</h2>
         </div>
-        <button class="icon-button" id="closeTaskForm" type="button" aria-label="Fechar">×</button>
+        <button class="icon-button" id="closeTaskForm" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
 
       <label for="taskTitle">O que você quer realizar?</label>
@@ -133,7 +134,7 @@
           <p class="eyebrow">Detalhes da tarefa</p>
           <h2 id="detailTaskTitle"></h2>
         </div>
-        <button class="icon-button" id="closeTaskDetail" type="button" aria-label="Fechar">×</button>
+        <button class="icon-button" id="closeTaskDetail" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
       <dl class="detail-list">
         <div><dt>Objetivo do ciclo</dt><dd id="detailObjective"></dd></div>
@@ -156,7 +157,7 @@
           <p class="eyebrow">Fechamento semanal</p>
           <h2>Encerrar este ciclo?</h2>
         </div>
-        <button class="icon-button" id="closeCycleDialogButton" type="button" aria-label="Fechar">×</button>
+        <button class="icon-button" id="closeCycleDialogButton" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
       <p class="dialog-copy" id="closeCycleSummary"></p>
       <label for="cycleFeedback">Como foi sua semana?</label>
@@ -179,7 +180,7 @@
       <div class="task-actions">
         <button class="view-task" type="button" aria-label="Visualizar tarefa">Ver</button>
         <button class="edit-task" type="button" aria-label="Editar tarefa">Editar</button>
-        <button class="delete-task" type="button" aria-label="Excluir tarefa">×</button>
+        <button class="delete-task" type="button" aria-label="Excluir tarefa"><i class="fa-solid fa-trash-can" aria-hidden="true"></i></button>
       </div>
     </article>
   </template>

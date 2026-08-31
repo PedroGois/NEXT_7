@@ -6,10 +6,10 @@ const CYCLE_LENGTH = 7;
 const PROGRAM_LENGTH = 12;
 
 const categories = {
-  corpo: { label: "Corpo", icon: "◒", message: "Energia e saúde", color: "#ff7557" },
-  carreira: { label: "Carreira", icon: "↗", message: "Trabalho e crescimento", color: "#8e7dff" },
-  vida: { label: "Vida", icon: "⌂", message: "Rotina e relações", color: "#57c995" },
-  mente: { label: "Mente", icon: "✦", message: "Clareza e aprendizado", color: "#f3bc4d" },
+  corpo: { label: "Corpo", icon: "fa-dumbbell", message: "Energia e saúde", color: "#ff7557" },
+  carreira: { label: "Carreira", icon: "fa-briefcase", message: "Trabalho e crescimento", color: "#8e7dff" },
+  vida: { label: "Vida", icon: "fa-house", message: "Rotina e relações", color: "#57c995" },
+  mente: { label: "Mente", icon: "fa-brain", message: "Clareza e aprendizado", color: "#f3bc4d" },
 };
 
 // O state representa somente o que está sendo exibido agora.
@@ -196,7 +196,7 @@ function renderCategories() {
     card.style.setProperty("--category-color", category.color);
     card.innerHTML = `
       <div class="category-top">
-        <span class="category-icon">${category.icon}</span>
+        <i class="category-icon fa-solid ${category.icon}" aria-hidden="true"></i>
         <span class="category-percentage">${tasks.length}</span>
       </div>
       <h3>${category.label}</h3>
@@ -242,7 +242,7 @@ function renderTasks() {
     const repeatLabel = task.seriesId ? " · repete diariamente" : "";
     const dateLabel = ` · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}`;
     item.querySelector(".task-category").textContent = `${categories[task.category].label}${dateLabel}${repeatLabel}`;
-    check.textContent = task.completed ? "✓" : "";
+    check.innerHTML = task.completed ? '<i class="fa-solid fa-check" aria-hidden="true"></i>' : "";
     check.setAttribute("aria-label", task.completed ? "Marcar como pendente" : "Marcar como concluída");
     check.addEventListener("click", () => toggleTask(task.id));
     item.querySelector(".view-task").addEventListener("click", () => openTaskDetail(task.id));

@@ -40,7 +40,7 @@ button { color: inherit; }
   border-bottom: 1px solid var(--line);
 }
 .compact-add { padding: 10px 15px; font-size: .82rem; }
-.compact-add span { margin-right: 4px; }
+.compact-add i { margin-right: 4px; }
 
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font: 800 1.35rem "Manrope"; text-decoration: none; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #12150d; background: var(--accent); font-size: .9rem; }
@@ -56,7 +56,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .primary-button, .secondary-button { border: 0; border-radius: 999px; padding: 14px 22px; font-weight: 700; cursor: pointer; transition: transform .2s, background .2s; }
 .primary-button { flex: 0 0 auto; color: #151a0c; background: var(--accent); }
 .primary-button:hover { background: #d3ff7e; transform: translateY(-2px); }
-.primary-button span { margin-right: 8px; font-size: 1.25rem; }
+.primary-button span, .primary-button i { margin-right: 8px; font-size: 1.05em; }
 .secondary-button { background: var(--surface-light); }
 .text-button { padding: 0; border: 0; color: var(--accent); background: transparent; font-weight: 700; cursor: pointer; }
 
@@ -92,14 +92,14 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .progress-label { margin-bottom: 3px; color: var(--muted); font-size: .9rem; }
 .progress-label strong { color: var(--text); }
 
-.category-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.category-card { padding: 11px 12px; border: 1px solid var(--line); border-radius: 13px; color: var(--text); background: var(--surface); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+.category-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.category-card { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; grid-template-rows: 1fr 1fr; align-items: center; column-gap: 9px; min-height: 66px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 13px; color: var(--text); background: var(--surface); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
 .category-card:hover, .category-card.active { border-color: var(--category-color); background: color-mix(in srgb, var(--category-color) 10%, var(--surface)); }
-.category-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.category-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 12px; color: var(--category-color); background: color-mix(in srgb, var(--category-color) 14%, transparent); font-weight: 700; }
-.category-percentage { font: 700 1.05rem "Manrope"; }
-.category-card h3 { margin-bottom: 4px; font: 700 .9rem "Manrope"; }
-.category-card small { color: var(--muted); font-size: .7rem; }
+.category-top { display: contents; }
+.category-icon { grid-row: 1 / 3; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; color: var(--category-color); background: color-mix(in srgb, var(--category-color) 14%, transparent); font-weight: 700; }
+.category-percentage { grid-column: 3; grid-row: 1 / 3; font: 700 .95rem "Manrope"; }
+.category-card h3 { grid-column: 2; grid-row: 1; align-self: end; margin: 0; font: 700 .83rem "Manrope"; }
+.category-card small { grid-column: 2; grid-row: 2; align-self: start; color: var(--muted); font-size: .65rem; }
 .progress-track { height: 5px; margin-bottom: 10px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.08); }
 .progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--category-color); transition: width .4s; }
 .category-card small { font-size: .75rem; }
@@ -137,7 +137,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .delete-task:hover { color: #ff7557; }
 
 .empty-state { padding: 55px 20px; border: 1px dashed rgba(255,255,255,.12); border-radius: var(--radius-lg); color: var(--muted); text-align: center; }
-.empty-state span { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%; color: var(--accent); background: var(--accent-dark); }
+.empty-state :is(span, i) { display: grid; place-items: center; width: 46px; height: 46px; margin: 0 auto 16px; border-radius: 50%; color: var(--accent); background: var(--accent-dark); }
 .empty-state h3 { margin-bottom: 7px; color: var(--text); }
 .empty-state p { margin-bottom: 0; font-size: .9rem; }
 
@@ -207,7 +207,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .week-section .section-heading { margin-bottom: 14px; }
   .week-section .section-heading h2 { font-size: 1.35rem; }
   .section-heading, .tasks-heading { align-items: flex-start; flex-direction: column; }
-  .category-grid { grid-template-columns: 1fr; }
+  .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .week-grid { display: flex; margin: 0 -12px; padding: 3px 12px 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .week-grid::-webkit-scrollbar { display: none; }
   .day-card { flex: 0 0 112px; scroll-snap-align: start; }
