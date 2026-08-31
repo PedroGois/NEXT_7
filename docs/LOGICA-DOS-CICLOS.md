@@ -134,3 +134,43 @@ As tarefas antigas continuam armazenadas. A interface atual exibe apenas o resum
 5. Termine em `finishCycle()`;
 6. Só depois analise as funções `render...`, que cuidam principalmente do HTML.
 
+## 10. Tarefas que se repetem
+
+Quando “Repetir todos os dias” está marcado, o app não cria uma regra abstrata. Ele cria uma tarefa independente para cada dia, começando na data escolhida e terminando no último dia do ciclo.
+
+Todas recebem o mesmo `seriesId`, permitindo reconhecer que pertencem à mesma repetição. Cada ocorrência pode ser concluída separadamente. Essa escolha deixa os cálculos e o banco mais fáceis de entender.
+
+## 11. Visão do dia
+
+`state.selectedDate` guarda o dia que está sendo observado. Ao iniciar, ele recebe a data de hoje quando ela pertence ao ciclo. Clicar em um cartão de dia apenas atualiza `selectedDate` e redesenha a lista.
+
+Por isso, a lista principal mostra somente as tarefas do dia selecionado, enquanto os cards de progresso continuam usando todas as tarefas do ciclo.
+
+## 12. PWA e funcionamento offline
+
+O `manifest.json` informa nome, cores, ícone e modo de abertura independente. O `service-worker.js` guarda os arquivos principais em cache.
+
+O IndexedDB continua responsável pelos dados pessoais. O service worker guarda os arquivos do app; ele não guarda tarefas. Para ativar esses recursos fora do computador, o projeto precisa ser servido por HTTPS.
+
+## 13. Importação da semana
+
+O arquivo importado possui um objetivo e uma lista `tasks`. Cada item usa apenas quatro campos:
+
+```json
+{
+  "title": "Caminhar por 30 minutos",
+  "category": "corpo",
+  "day": 2,
+  "repeatDaily": false
+}
+```
+
+`validateWeekPlan()` valida todas as tarefas antes de salvar qualquer uma. Depois, `importWeekPlan()` converte o número do dia em uma data real do ciclo. Tarefas repetidas usam a mesma lógica do formulário.
+
+Uma tarefa com o mesmo título, categoria e data já existente é ignorada. Isso evita duplicação acidental ao importar o mesmo arquivo novamente.
+
+## 14. Exportação da semana
+
+`buildWeekExport()` transforma o ciclo ativo no mesmo formato JSON usado pela importação. Tarefas que possuem o mesmo `seriesId` são agrupadas novamente em uma única tarefa com `repeatDaily: true`.
+
+`exportWeekPlan()` cria um `Blob`, gera um endereço temporário e aciona o download de `next7-ciclo-XX.json`. Esse arquivo contém o planejamento, não o progresso. Assim ele pode ser reutilizado como base para outro ciclo ou importado em outro aparelho.

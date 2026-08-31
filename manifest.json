@@ -1,0 +1,20 @@
+{
+  "name": "Next7 — Evolução pessoal",
+  "short_name": "Next7",
+  "description": "Planeje ciclos de 7 dias e acompanhe sua evolução pessoal.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#101114",
+  "theme_color": "#101114",
+  "icons": [
+    {
+      "src": "assets/images/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

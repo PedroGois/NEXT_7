@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101114">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Next7">
   <meta name="description" content="Dashboard pessoal para acompanhar tarefas e evolução em Corpo, Carreira, Vida e Mente.">
   <title>Next7 — Evolução em ciclos</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/images/icon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -47,9 +52,16 @@
         </div>
         <div class="cycle-actions">
           <div class="cycle-progress"><strong id="cycleDay">Dia 1</strong><span>de 7</span></div>
-          <button class="text-button" id="openCloseCycle" type="button">Encerrar ciclo</button>
+          <div class="cycle-action-buttons">
+            <button class="text-button" id="importWeekButton" type="button">Importar semana</button>
+            <button class="text-button" id="exportWeekButton" type="button">Exportar semana</button>
+            <button class="text-button" id="openCloseCycle" type="button">Encerrar ciclo</button>
+          </div>
+          <input id="importWeekFile" type="file" accept="application/json,.json" hidden>
         </div>
       </section>
+
+      <p class="import-message" id="importMessage" role="status" hidden></p>
 
       <section class="week-section" aria-labelledby="weekTitle">
         <div class="section-heading">
@@ -59,6 +71,28 @@
           </div>
         </div>
         <div class="week-grid" id="weekGrid"></div>
+      </section>
+
+      <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
+        <div class="section-heading tasks-heading">
+          <div>
+            <p class="eyebrow">Foco do dia</p>
+            <h2 id="tasksTitle">Hoje</h2>
+            <p class="selected-date" id="selectedDateLabel"></p>
+          </div>
+          <div class="filters" id="filters" aria-label="Filtrar tarefas">
+            <button class="filter active" data-filter="all" type="button">Todas</button>
+            <button class="filter" data-filter="pending" type="button">Pendentes</button>
+            <button class="filter" data-filter="completed" type="button">Concluídas</button>
+          </div>
+        </div>
+
+        <div class="task-list" id="taskList"></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <span aria-hidden="true">✓</span>
+          <h3>Nenhuma tarefa neste dia</h3>
+          <p>Selecione outro dia ou crie um novo passo.</p>
+        </div>
       </section>
 
       <section class="overview" aria-labelledby="overviewTitle">
@@ -84,26 +118,6 @@
         <div class="empty-history" id="emptyHistory">Seus ciclos encerrados aparecerão aqui.</div>
       </section>
 
-      <section class="tasks-section" aria-labelledby="tasksTitle">
-        <div class="section-heading tasks-heading">
-          <div>
-            <p class="eyebrow">Foco</p>
-            <h2 id="tasksTitle">Suas tarefas</h2>
-          </div>
-          <div class="filters" id="filters" aria-label="Filtrar tarefas">
-            <button class="filter active" data-filter="all" type="button">Todas</button>
-            <button class="filter" data-filter="pending" type="button">Pendentes</button>
-            <button class="filter" data-filter="completed" type="button">Concluídas</button>
-          </div>
-        </div>
-
-        <div class="task-list" id="taskList"></div>
-        <div class="empty-state" id="emptyState" hidden>
-          <span aria-hidden="true">✓</span>
-          <h3>Nenhuma tarefa por aqui</h3>
-          <p>Crie um próximo passo para começar a avançar.</p>
-        </div>
-      </section>
     </main>
   </div>
 
@@ -122,6 +136,14 @@
 
       <label for="taskDate">Dia planejado</label>
       <select id="taskDate" name="scheduledDate" required></select>
+
+      <label class="repeat-option">
+        <input id="repeatDaily" name="repeatDaily" type="checkbox">
+        <span>
+          <strong>Repetir todos os dias</strong>
+          <small>Cria esta tarefa diariamente, a partir do dia escolhido até o fim do ciclo.</small>
+        </span>
+      </label>
 
       <fieldset>
         <legend>Área da vida</legend>

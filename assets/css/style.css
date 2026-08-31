@@ -67,9 +67,12 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .objective-row input { width: 100%; padding: 13px 15px; outline: 0; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: rgba(10,11,14,.55); }
 .objective-row input:focus { border-color: var(--accent); }
 .cycle-actions { flex: 0 0 auto; display: flex; align-items: center; gap: 24px; }
+.cycle-action-buttons { display: flex; align-items: flex-end; flex-direction: column; gap: 10px; }
 .cycle-progress { display: flex; flex-direction: column; align-items: center; width: 76px; height: 76px; justify-content: center; border: 1px solid var(--line); border-radius: 50%; }
 .cycle-progress strong { font: 700 1rem "Manrope"; }
 .cycle-progress span { color: var(--muted); font-size: .72rem; }
+.import-message { margin: -15px 0 25px; padding: 12px 15px; border: 1px solid rgba(198,243,107,.25); border-radius: 12px; color: var(--accent); background: rgba(198,243,107,.06); font-size: .82rem; }
+.import-message.error { color: #ff8a70; border-color: rgba(255,117,87,.3); background: rgba(255,117,87,.06); }
 
 .week-section { padding-top: 28px; }
 .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
@@ -79,6 +82,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .day-card strong { overflow: hidden; width: 100%; font-size: .85rem; text-overflow: ellipsis; white-space: nowrap; }
 .day-card.today-card { border-color: rgba(198,243,107,.55); background: linear-gradient(145deg, rgba(198,243,107,.1), transparent), var(--surface); }
 .day-card.today-card span { color: var(--accent); }
+.day-card.selected-day { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .overview, .tasks-section { padding-top: 28px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
@@ -103,6 +107,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .filters { display: flex; gap: 6px; padding: 4px; border-radius: 999px; background: var(--surface); }
 .filter { border: 0; border-radius: 999px; padding: 8px 14px; color: var(--muted); background: transparent; font-size: .8rem; cursor: pointer; }
 .filter.active { color: var(--text); background: var(--surface-light); }
+.selected-date { margin: 7px 0 0; color: var(--muted); font-size: .82rem; text-transform: capitalize; }
 .task-list { display: grid; gap: 10px; }
 .task-item { display: flex; align-items: center; gap: 15px; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); transition: border-color .2s; }
 .task-item:hover { border-color: rgba(255,255,255,.16); }
@@ -146,6 +151,11 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .task-form > input, .task-form > select, .task-form > textarea { width: 100%; margin-bottom: 24px; padding: 14px 15px; outline: 0; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: #121419; }
 .task-form > input:focus, .task-form > select:focus, .task-form > textarea:focus { border-color: var(--accent); }
 .task-form > textarea { resize: vertical; }
+.repeat-option { display: flex; align-items: flex-start; gap: 12px; margin: -8px 0 24px; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.02); cursor: pointer; }
+.repeat-option input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); }
+.repeat-option span { display: flex; flex-direction: column; gap: 3px; }
+.repeat-option strong { font-size: .84rem; }
+.repeat-option small { color: var(--muted); font-size: .74rem; line-height: 1.4; }
 .dialog-copy, .form-note { color: var(--muted); line-height: 1.55; }
 .dialog-copy { margin-bottom: 24px; }
 .form-note { margin: 0; font-size: .78rem; }
@@ -167,12 +177,23 @@ fieldset { margin: 0; padding: 0; border: 0; }
 @media (max-width: 560px) {
   .app-shell { width: min(100% - 24px, 1180px); }
   .today { display: none; }
-  .hero { padding: 50px 0 35px; }
-  h1 { font-size: 2.65rem; }
+  .hero { gap: 20px; padding: 28px 0 24px; }
+  h1 { margin-bottom: 0; font-size: 2.1rem; }
+  .hero-copy { display: none; }
   .hero .primary-button { width: 100%; }
+  .cycle-panel { gap: 20px; margin-bottom: 12px; padding: 19px; }
+  .cycle-actions { gap: 14px; }
+  .cycle-action-buttons { align-items: flex-start; }
+  .cycle-progress { width: 62px; height: 62px; }
+  .week-section { padding-top: 18px; }
+  .week-section .section-heading { margin-bottom: 14px; }
+  .week-section .section-heading h2 { font-size: 1.35rem; }
   .section-heading, .tasks-heading { align-items: flex-start; flex-direction: column; }
   .category-grid { grid-template-columns: 1fr; }
-  .week-grid { grid-template-columns: repeat(2, 1fr); }
+  .week-grid { display: flex; margin: 0 -12px; padding: 3px 12px 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+  .week-grid::-webkit-scrollbar { display: none; }
+  .day-card { flex: 0 0 112px; scroll-snap-align: start; }
+  .tasks-section { margin-top: 28px; }
   .objective-row { flex-direction: column; }
   .cycle-meta { align-items: flex-start; flex-direction: column; }
   .filters { width: 100%; }

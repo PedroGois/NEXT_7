@@ -50,6 +50,13 @@ O acompanhamento é dividido em quatro áreas:
 - Histórico local dos ciclos encerrados;
 - Criação automática do próximo ciclo;
 - Migração das tarefas criadas antes da implementação dos ciclos.
+- Visão diária com Hoje selecionado inicialmente;
+- Navegação entre os sete dias do ciclo;
+- Tarefas com repetição diária até o fim do ciclo;
+- Instalação como PWA e cache básico para uso offline.
+- Importação de um planejamento semanal em JSON;
+- Exportação do ciclo atual em JSON reutilizável;
+- Script interativo para gerar o arquivo da semana.
 
 Uma explicação detalhada do fluxo e dos dados está em [`docs/LOGICA-DOS-CICLOS.md`](docs/LOGICA-DOS-CICLOS.md).
 
@@ -64,8 +71,15 @@ NEXT_7/
 │   └── js/
 │       ├── app.js
 │       └── db.js
+├── assets/images/icon.svg
 ├── docs/
 │   └── LOGICA-DOS-CICLOS.md
+├── data/
+│   └── MODELO-SEMANA.json
+├── scripts/
+│   └── gerar-semana.mjs
+├── manifest.json
+├── service-worker.js
 ├── .gitignore
 ├── index.html
 └── README.md
@@ -86,6 +100,20 @@ npx serve .
 
 Depois, acesse o endereço exibido no terminal. Os dados ficam armazenados somente no navegador utilizado.
 
+## Planejar e importar uma semana
+
+Você pode preencher uma cópia de `data/MODELO-SEMANA.json` ou executar o gerador interativo:
+
+```bash
+node scripts/gerar-semana.mjs
+```
+
+O script cria `semana-next7.json`. No app, use **Importar semana** e selecione esse arquivo. A importação atualiza o objetivo e adiciona as tarefas ao ciclo ativo. Reimportar o mesmo conteúdo não duplica uma tarefa igual na mesma data.
+
+O botão **Exportar semana** baixa `next7-ciclo-XX.json`. Tarefas de repetição diária são agrupadas em uma única entrada. O arquivo representa o planejamento: status de conclusão e progresso não são incluídos.
+
+Para montar o planejamento com ajuda de uma IA, use [`data/PROMPT-PARA-PLANEJAR.md`](data/PROMPT-PARA-PLANEJAR.md), preencha seu contexto e salve o JSON recebido.
+
 ## Próximas etapas
 
 - [x] Criar a estrutura inicial em HTML, CSS e JavaScript;
@@ -96,8 +124,8 @@ Depois, acesse o endereço exibido no terminal. Os dados ficam armazenados somen
 - [x] Criar o fechamento e o feedback semanal;
 - [x] Guardar e consultar o histórico local dos ciclos;
 - [ ] Adicionar gráficos de evolução;
-- [ ] Adicionar manifest e service worker;
-- [ ] Disponibilizar a instalação como PWA no iPhone.
+- [x] Adicionar manifest e service worker;
+- [x] Disponibilizar a instalação como PWA no iPhone.
 
 ## Privacidade
 

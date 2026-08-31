@@ -19,6 +19,7 @@ const state = {
   tasks: [],
   history: [],
   filter: "all",
+  selectedDate: null,
 };
 
 const elements = {
@@ -30,6 +31,8 @@ const elements = {
   weekGrid: document.querySelector("#weekGrid"),
   categoryGrid: document.querySelector("#categoryGrid"),
   taskList: document.querySelector("#taskList"),
+  tasksTitle: document.querySelector("#tasksTitle"),
+  selectedDateLabel: document.querySelector("#selectedDateLabel"),
   emptyState: document.querySelector("#emptyState"),
   historyList: document.querySelector("#historyList"),
   emptyHistory: document.querySelector("#emptyHistory"),
@@ -39,9 +42,14 @@ const elements = {
   taskForm: document.querySelector("#taskForm"),
   taskTitle: document.querySelector("#taskTitle"),
   taskDate: document.querySelector("#taskDate"),
+  repeatDaily: document.querySelector("#repeatDaily"),
   closeCycleDialog: document.querySelector("#closeCycleDialog"),
   closeCycleForm: document.querySelector("#closeCycleForm"),
   closeCycleSummary: document.querySelector("#closeCycleSummary"),
+  importWeekButton: document.querySelector("#importWeekButton"),
+  exportWeekButton: document.querySelector("#exportWeekButton"),
+  importWeekFile: document.querySelector("#importWeekFile"),
+  importMessage: document.querySelector("#importMessage"),
   taskTemplate: document.querySelector("#taskTemplate"),
 };
 
@@ -127,6 +135,13 @@ async function loadData() {
   }
 
   state.tasks = allTasks.filter((task) => task.cycleId === state.activeCycle.id);
+
+  // A tela abre no dia de hoje. Se o ciclo estiver fora da data atual,
+  // usa o primeiro dia do ciclo como seleção segura.
+  const todayKey = toDateKey(new Date());
+  state.selectedDate = cycleDates(state.activeCycle).includes(todayKey)
+    ? todayKey
+    : state.activeCycle.startDate;
 }
 
 // =============================================================
@@ -159,12 +174,13 @@ function renderWeek() {
     dayCard.type = "button";
     dayCard.className = "day-card";
     dayCard.classList.toggle("today-card", dateKey === todayKey);
+    dayCard.classList.toggle("selected-day", dateKey === state.selectedDate);
     dayCard.innerHTML = `
       <span>Dia ${index + 1}</span>
       <strong>${weekday}, ${String(date.getDate()).padStart(2, "0")}</strong>
       <small>${completed}/${tasks.length} concluídas</small>
     `;
-    dayCard.addEventListener("click", () => openTaskDialog(dateKey));
+    dayCard.addEventListener("click", () => selectDay(dateKey));
     elements.weekGrid.append(dayCard);
 
     const option = document.createElement("option");
@@ -172,6 +188,13 @@ function renderWeek() {
     option.textContent = `Dia ${index + 1} — ${formatDate(dateKey, { weekday: "long", day: "2-digit", month: "2-digit" })}`;
     elements.taskDate.append(option);
   });
+}
+
+// Troca o dia principal da lista sem abrir o formulário automaticamente.
+function selectDay(dateKey) {
+  state.selectedDate = dateKey;
+  renderWeek();
+  renderTasks();
 }
 
 function renderCategories() {
@@ -199,12 +222,21 @@ function renderCategories() {
 }
 
 function visibleTasks() {
-  if (state.filter === "pending") return state.tasks.filter((task) => !task.completed);
-  if (state.filter === "completed") return state.tasks.filter((task) => task.completed);
-  return state.tasks;
+  const tasksFromSelectedDay = state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
+  if (state.filter === "pending") return tasksFromSelectedDay.filter((task) => !task.completed);
+  if (state.filter === "completed") return tasksFromSelectedDay.filter((task) => task.completed);
+  return tasksFromSelectedDay;
 }
 
 function renderTasks() {
+  const todayKey = toDateKey(new Date());
+  const selectedDayNumber = daysBetween(state.activeCycle.startDate, state.selectedDate) + 1;
+  const isToday = state.selectedDate === todayKey;
+  elements.tasksTitle.textContent = isToday ? "Hoje" : `Dia ${selectedDayNumber}`;
+  elements.selectedDateLabel.textContent = formatDate(state.selectedDate, {
+    weekday: "long", day: "2-digit", month: "long",
+  });
+
   const tasks = visibleTasks().sort((a, b) => {
     return a.scheduledDate.localeCompare(b.scheduledDate) || b.createdAt.localeCompare(a.createdAt);
   });
@@ -218,7 +250,8 @@ function renderTasks() {
     item.dataset.category = task.category;
     item.classList.toggle("completed", task.completed);
     item.querySelector("h3").textContent = task.title;
-    item.querySelector(".task-category").textContent = `${categories[task.category].label} · ${formatDate(task.scheduledDate, { weekday: "short", day: "2-digit", month: "2-digit" })}`;
+    const repeatLabel = task.seriesId ? " · repete diariamente" : "";
+    item.querySelector(".task-category").textContent = `${categories[task.category].label}${repeatLabel}`;
     check.textContent = task.completed ? "✓" : "";
     check.setAttribute("aria-label", task.completed ? "Marcar como pendente" : "Marcar como concluída");
     check.addEventListener("click", () => toggleTask(task.id));
@@ -269,7 +302,7 @@ async function saveObjective() {
   elements.cycleObjective.blur();
 }
 
-function openTaskDialog(selectedDate = state.activeCycle.startDate) {
+function openTaskDialog(selectedDate = state.selectedDate) {
   elements.taskDate.value = selectedDate;
   elements.taskDialog.showModal();
   requestAnimationFrame(() => elements.taskTitle.focus());
@@ -278,19 +311,37 @@ function openTaskDialog(selectedDate = state.activeCycle.startDate) {
 async function addTask(event) {
   event.preventDefault();
   const data = new FormData(elements.taskForm);
-  const task = {
-    cycleId: state.activeCycle.id,
-    title: data.get("title").trim(),
-    category: data.get("category"),
-    scheduledDate: data.get("scheduledDate"),
-    completed: false,
-    completedAt: null,
-    createdAt: new Date().toISOString(),
-  };
-  if (!task.title) return;
+  const title = data.get("title").trim();
+  const firstDate = data.get("scheduledDate");
+  const shouldRepeat = data.get("repeatDaily") === "on";
+  if (!title) return;
 
-  task.id = await NextDB.tasks.add(task);
-  state.tasks.push(task);
+  // Uma repetição vira tarefas independentes, uma por dia. Isso deixa cada
+  // ocorrência concluível separadamente e mantém o modelo fácil de entender.
+  const dates = cycleDates(state.activeCycle);
+  const scheduledDates = shouldRepeat
+    ? dates.slice(dates.indexOf(firstDate))
+    : [firstDate];
+  const seriesId = shouldRepeat
+    ? (crypto.randomUUID?.() || `series-${Date.now()}`)
+    : null;
+
+  for (const scheduledDate of scheduledDates) {
+    const task = {
+      cycleId: state.activeCycle.id,
+      seriesId,
+      title,
+      category: data.get("category"),
+      scheduledDate,
+      completed: false,
+      completedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    task.id = await NextDB.tasks.add(task);
+    state.tasks.push(task);
+  }
+
+  state.selectedDate = firstDate;
   elements.taskForm.reset();
   elements.taskDialog.close();
   render();
@@ -311,7 +362,149 @@ async function deleteTask(id) {
 }
 
 // =============================================================
-// 6. ENCERRAMENTO E HISTÓRICO
+// 6. IMPORTAÇÃO DE UM PLANEJAMENTO SEMANAL
+// =============================================================
+
+function showImportMessage(message, isError = false) {
+  elements.importMessage.textContent = message;
+  elements.importMessage.classList.toggle("error", isError);
+  elements.importMessage.hidden = false;
+}
+
+// Valida antes de tocar no banco. Assim um arquivo incompleto não deixa
+// metade das tarefas importada e metade de fora.
+function validateWeekPlan(plan) {
+  if (!plan || typeof plan !== "object") throw new Error("O arquivo não contém um planejamento válido.");
+  if (!Array.isArray(plan.tasks)) throw new Error("O campo tasks precisa ser uma lista.");
+
+  return plan.tasks.map((task, index) => {
+    const position = index + 1;
+    const title = String(task.title || "").trim();
+    const category = String(task.category || "").toLowerCase();
+    const day = Number(task.day);
+
+    if (!title) throw new Error(`A tarefa ${position} está sem título.`);
+    if (!categories[category]) throw new Error(`A tarefa ${position} possui uma categoria inválida.`);
+    if (!Number.isInteger(day) || day < 1 || day > CYCLE_LENGTH) {
+      throw new Error(`A tarefa ${position} precisa usar um dia entre 1 e 7.`);
+    }
+
+    return { title, category, day, repeatDaily: task.repeatDaily === true };
+  });
+}
+
+async function importWeekPlan(file) {
+  try {
+    const plan = JSON.parse(await file.text());
+    const importedTasks = validateWeekPlan(plan);
+    let created = 0;
+    let ignored = 0;
+
+    if (typeof plan.objective === "string" && plan.objective.trim()) {
+      state.activeCycle.objective = plan.objective.trim().slice(0, 140);
+      await NextDB.cycles.update(state.activeCycle);
+    }
+
+    for (const importedTask of importedTasks) {
+      const firstIndex = importedTask.day - 1;
+      const dates = importedTask.repeatDaily
+        ? cycleDates(state.activeCycle).slice(firstIndex)
+        : [cycleDates(state.activeCycle)[firstIndex]];
+      const seriesId = importedTask.repeatDaily
+        ? (crypto.randomUUID?.() || `series-${Date.now()}-${created}`)
+        : null;
+
+      for (const scheduledDate of dates) {
+        // Reimportar o mesmo arquivo não duplica a mesma tarefa no mesmo dia.
+        const alreadyExists = state.tasks.some((task) =>
+          task.title.toLowerCase() === importedTask.title.toLowerCase()
+          && task.category === importedTask.category
+          && task.scheduledDate === scheduledDate
+        );
+        if (alreadyExists) {
+          ignored += 1;
+          continue;
+        }
+
+        const task = {
+          cycleId: state.activeCycle.id,
+          seriesId,
+          title: importedTask.title,
+          category: importedTask.category,
+          scheduledDate,
+          completed: false,
+          completedAt: null,
+          createdAt: new Date().toISOString(),
+        };
+        task.id = await NextDB.tasks.add(task);
+        state.tasks.push(task);
+        created += 1;
+      }
+    }
+
+    render();
+    const ignoredText = ignored ? ` ${ignored} ocorrência(s) duplicada(s) foram ignoradas.` : "";
+    showImportMessage(`Semana importada: ${created} ocorrência(s) criada(s).${ignoredText}`);
+  } catch (error) {
+    showImportMessage(`Não foi possível importar: ${error.message}`, true);
+  } finally {
+    // Permite escolher novamente o mesmo arquivo depois de corrigi-lo.
+    elements.importWeekFile.value = "";
+  }
+}
+
+// Converte o ciclo atual para o mesmo formato aceito pela importação.
+// Ocorrências com o mesmo seriesId voltam a ser uma única tarefa diária.
+function buildWeekExport() {
+  const exportedTasks = [];
+  const exportedSeries = new Set();
+  const sortedTasks = [...state.tasks].sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+
+  for (const task of sortedTasks) {
+    if (task.seriesId && exportedSeries.has(task.seriesId)) continue;
+    if (task.seriesId) exportedSeries.add(task.seriesId);
+
+    exportedTasks.push({
+      title: task.title,
+      category: task.category,
+      day: daysBetween(state.activeCycle.startDate, task.scheduledDate) + 1,
+      repeatDaily: Boolean(task.seriesId),
+    });
+  }
+
+  return {
+    version: 1,
+    objective: state.activeCycle.objective,
+    context: {
+      duration: "7 dias",
+      exportedAt: new Date().toISOString(),
+      note: "Arquivo de planejamento. O progresso das tarefas não é incluído.",
+    },
+    tasks: exportedTasks,
+  };
+}
+
+function exportWeekPlan() {
+  const plan = buildWeekExport();
+  const content = JSON.stringify(plan, null, 2);
+  const blob = new Blob([content], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const cycleNumber = String(state.activeCycle.number).padStart(2, "0");
+
+  link.href = url;
+  link.download = `next7-ciclo-${cycleNumber}.json`;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  // O pequeno atraso dá tempo para Safari e navegadores móveis iniciarem
+  // o download antes que o endereço temporário seja liberado.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showImportMessage(`Ciclo ${state.activeCycle.number} exportado com ${plan.tasks.length} tarefa(s) planejada(s).`);
+}
+
+// =============================================================
+// 7. ENCERRAMENTO E HISTÓRICO
 // =============================================================
 
 function openCloseCycleDialog() {
@@ -340,19 +533,26 @@ async function finishCycle(event) {
   state.history.unshift(state.activeCycle);
   state.activeCycle = await createNextCycle([...state.history, state.activeCycle]);
   state.tasks = [];
+  state.selectedDate = state.activeCycle.startDate;
   elements.closeCycleForm.reset();
   elements.closeCycleDialog.close();
   render();
 }
 
 // =============================================================
-// 7. EVENTOS E INICIALIZAÇÃO
+// 8. EVENTOS E INICIALIZAÇÃO
 // =============================================================
 
 document.querySelector("#openTaskForm").addEventListener("click", () => openTaskDialog());
 document.querySelector("#closeTaskForm").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#cancelTask").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#saveObjective").addEventListener("click", saveObjective);
+elements.importWeekButton.addEventListener("click", () => elements.importWeekFile.click());
+elements.exportWeekButton.addEventListener("click", exportWeekPlan);
+elements.importWeekFile.addEventListener("change", () => {
+  const [file] = elements.importWeekFile.files;
+  if (file) importWeekPlan(file);
+});
 document.querySelector("#openCloseCycle").addEventListener("click", openCloseCycleDialog);
 document.querySelector("#closeCycleDialogButton").addEventListener("click", () => elements.closeCycleDialog.close());
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
@@ -386,3 +586,11 @@ async function init() {
 
 init();
 
+// Registra o service worker somente quando o navegador oferece suporte.
+// Ele permite abrir os arquivos principais mesmo sem conexão.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./service-worker.js")
+      .catch((error) => console.error("Falha ao registrar o modo offline.", error));
+  });
+}
