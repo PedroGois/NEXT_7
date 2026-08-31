@@ -1,138 +1,55 @@
 # Next7
 
-App pessoal para acompanhar minha evolução durante ciclos de 7 dias.
+Next7 é um organizador pessoal de ciclos de 7 dias. Ele reúne tarefas em quatro pilares: **Corpo**, **Carreira**, **Vida** e **Mente**.
 
-## Objetivo
+## O que a versão atual faz
 
-Planejar os próximos 7 dias, registrar tarefas, acompanhar o que foi concluído e guardar esse histórico para analisar minha evolução ao longo de 12 semanas.
+- Cria e organiza tarefas por dia e pilar;
+- Abre em **Hoje** e permite navegar pelos próximos dias;
+- Oferece a visão **Geral** para todo o ciclo;
+- Filtra por pilar e por status (todas, pendentes ou concluídas);
+- Atualiza os totais dos pilares conforme o dia e status selecionados;
+- Salva os dados no navegador com IndexedDB;
+- Importa e exporta planejamentos em JSON;
+- Fecha o ciclo, registra um feedback e inicia o próximo;
+- Pode ser instalada como PWA e usada offline após a primeira abertura.
 
-O acompanhamento é dividido em quatro áreas:
+## Como usar
 
-- **Corpo:** saúde, exercícios, alimentação, sono e energia;
-- **Carreira:** trabalho, estudos, projetos e desenvolvimento profissional;
-- **Vida:** rotina, relações, finanças, lazer e organização pessoal;
-- **Mente:** aprendizado, reflexão, bem-estar e clareza mental.
+1. Abra o app em um servidor local.
+2. Defina o objetivo pelo ícone de ajustes no card do ciclo.
+3. Crie tarefas e escolha dia, pilar e repetição opcional.
+4. Navegue por **Hoje**, **Amanhã** e os próximos dias; use **Geral** para ver o ciclo inteiro.
+5. Use os pilares e o filtro de status para refinar a lista.
 
-## Tecnologias
+## Executar localmente
 
-- HTML;
-- CSS;
-- JavaScript;
-- IndexedDB;
-- PWA *(planejado)*.
+Abra a pasta com uma extensão como Live Server ou execute:
 
-## Estrutura inicial
+```bash
+python -m http.server 4173
+```
 
-- Objetivo da semana;
-- Próximos 7 dias;
-- Categorias de tarefas;
-- Registro de tarefas concluídas;
-- Feedback semanal;
-- Histórico local.
+Depois, acesse `http://localhost:4173`.
 
-## Funcionalidades da primeira versão
-
-- Criar tarefas e associá-las a uma das quatro categorias;
-- Marcar tarefas como concluídas ou pendentes;
-- Filtrar tarefas por status;
-- Acompanhar o progresso geral e por categoria;
-- Manter os dados salvos localmente com IndexedDB;
-- Usar a interface tanto no computador quanto no celular.
-
-## O que já funciona hoje
-
-- Criação automática de um ciclo com início, término e 7 dias;
-- Objetivo editável para o ciclo atual;
-- Tarefas vinculadas ao ciclo, a uma data e a uma categoria;
-- Progresso diário, geral e por categoria;
-- Encerramento manual com feedback semanal;
-- Resumo congelado com total, concluídas e percentual;
-- Histórico local dos ciclos encerrados;
-- Criação automática do próximo ciclo;
-- Migração das tarefas criadas antes da implementação dos ciclos.
-- Visão diária com Hoje selecionado inicialmente;
-- Navegação entre os sete dias do ciclo;
-- Tarefas com repetição diária até o fim do ciclo;
-- Instalação como PWA e cache básico para uso offline.
-- Importação de um planejamento semanal em JSON;
-- Exportação do ciclo atual em JSON reutilizável;
-- Script interativo para gerar o arquivo da semana.
-
-Uma explicação detalhada do fluxo e dos dados está em [`docs/LOGICA-DOS-CICLOS.md`](docs/LOGICA-DOS-CICLOS.md).
-
-## Estrutura do projeto
+## Estrutura
 
 ```text
 NEXT_7/
 ├── assets/
-│   ├── css/
-│   │   └── style.css
-│   ├── images/
+│   ├── css/style.css
+│   ├── images/icon.svg
 │   └── js/
 │       ├── app.js
 │       └── db.js
-├── assets/images/icon.svg
-├── docs/
-│   └── LOGICA-DOS-CICLOS.md
-├── data/
-│   └── MODELO-SEMANA.json
-├── scripts/
-│   └── gerar-semana.mjs
+├── index.html
 ├── manifest.json
 ├── service-worker.js
-├── .gitignore
-├── index.html
 └── README.md
 ```
 
-- `index.html`: estrutura e conteúdo da interface;
-- `assets/css/style.css`: identidade visual e responsividade;
-- `assets/js/app.js`: estado, interações e renderização;
-- `assets/js/db.js`: comunicação com o IndexedDB.
-
-## Como executar
-
-Abra o projeto usando um servidor local. No VS Code, você pode utilizar a extensão **Live Server**. Outra opção é executar:
-
-```bash
-npx serve .
-```
-
-Depois, acesse o endereço exibido no terminal. Os dados ficam armazenados somente no navegador utilizado.
-
-## Planejar e importar uma semana
-
-Você pode preencher uma cópia de `data/MODELO-SEMANA.json` ou executar o gerador interativo:
-
-```bash
-node scripts/gerar-semana.mjs
-```
-
-O script cria `semana-next7.json`. No app, use **Importar semana** e selecione esse arquivo. A importação atualiza o objetivo e adiciona as tarefas ao ciclo ativo. Reimportar o mesmo conteúdo não duplica uma tarefa igual na mesma data.
-
-O botão **Exportar semana** baixa `next7-ciclo-XX.json`. Tarefas de repetição diária são agrupadas em uma única entrada. O arquivo representa o planejamento: status de conclusão e progresso não são incluídos.
-
-Para montar o planejamento com ajuda de uma IA, use [`data/PROMPT-PARA-PLANEJAR.md`](data/PROMPT-PARA-PLANEJAR.md), preencha seu contexto e salve o JSON recebido.
-
-## Próximas etapas
-
-- [x] Criar a estrutura inicial em HTML, CSS e JavaScript;
-- [x] Implementar o armazenamento local de tarefas;
-- [x] Organizar tarefas em Corpo, Carreira, Vida e Mente;
-- [x] Definir o objetivo de cada ciclo;
-- [x] Distribuir tarefas entre os próximos 7 dias;
-- [x] Criar o fechamento e o feedback semanal;
-- [x] Guardar e consultar o histórico local dos ciclos;
-- [ ] Adicionar gráficos de evolução;
-- [x] Adicionar manifest e service worker;
-- [x] Disponibilizar a instalação como PWA no iPhone.
+`assets/` é mantida apenas para separar estilo, lógica, banco local e ícone da aplicação.
 
 ## Privacidade
 
-Nesta etapa, nenhuma informação é enviada para servidores externos. Todos os registros permanecem no IndexedDB do navegador e podem ser removidos ao limpar os dados locais do site.
-
-## Status
-
-🚧 Em desenvolvimento.
-
-Primeira versão focada em funcionar de forma simples no PC e depois como PWA no iPhone.
+Os dados ficam somente no IndexedDB do navegador. Nenhuma tarefa, objetivo ou feedback é enviado a um servidor.

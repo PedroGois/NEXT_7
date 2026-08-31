@@ -181,6 +181,15 @@ function renderDayNavigation() {
   const tomorrowKey = addDays(firstVisibleDay, 1);
   elements.dayNavigation.innerHTML = "";
 
+  const generalButton = document.createElement("button");
+  generalButton.type = "button";
+  generalButton.className = "day-navigation-button";
+  generalButton.classList.toggle("active", state.selectedDate === "all");
+  generalButton.textContent = "Geral";
+  generalButton.setAttribute("aria-label", "Ver todas as tarefas do ciclo");
+  generalButton.addEventListener("click", () => selectDay("all"));
+  elements.dayNavigation.append(generalButton);
+
   cycleDays.filter((dateKey) => dateKey >= firstVisibleDay).forEach((dateKey) => {
     const date = fromDateKey(dateKey);
     const button = document.createElement("button");
@@ -207,9 +216,10 @@ function selectDay(dateKey) {
 
 function renderCategories() {
   elements.categoryGrid.innerHTML = "";
+  const scopedTasks = tasksInActiveScope();
 
   Object.entries(categories).forEach(([key, category]) => {
-    const tasks = state.tasks.filter((task) => task.category === key);
+    const tasks = scopedTasks.filter((task) => task.category === key);
     const completed = tasks.filter((task) => task.completed).length;
     const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
     const card = document.createElement("button");
@@ -235,8 +245,15 @@ function renderCategories() {
 }
 
 function visibleTasks() {
-  let visible = state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
+  let visible = tasksInActiveScope();
   if (state.categoryFilter !== "all") visible = visible.filter((task) => task.category === state.categoryFilter);
+  return visible;
+}
+
+function tasksInActiveScope() {
+  let visible = state.selectedDate === "all"
+    ? [...state.tasks]
+    : state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
   if (state.filter === "pending") visible = visible.filter((task) => !task.completed);
   if (state.filter === "completed") visible = visible.filter((task) => task.completed);
   return visible;
@@ -244,11 +261,12 @@ function visibleTasks() {
 
 function renderTasks() {
   const activeCategory = categories[state.categoryFilter];
+  const isGeneral = state.selectedDate === "all";
   const isToday = state.selectedDate === toDateKey(new Date());
-  elements.tasksTitle.textContent = isToday ? "Hoje" : formatDate(state.selectedDate, { weekday: "long" });
+  elements.tasksTitle.textContent = isGeneral ? "Geral" : isToday ? "Hoje" : formatDate(state.selectedDate, { weekday: "long" });
   elements.selectedDateLabel.textContent = activeCategory
     ? `${activeCategory.label} · ${activeCategory.message}`
-    : formatDate(state.selectedDate, { day: "2-digit", month: "long" });
+    : isGeneral ? "Todas as tarefas do ciclo" : formatDate(state.selectedDate, { day: "2-digit", month: "long" });
 
   const tasks = visibleTasks().sort((a, b) => {
     return a.scheduledDate.localeCompare(b.scheduledDate) || b.createdAt.localeCompare(a.createdAt);
@@ -646,6 +664,7 @@ document.querySelector("#filters").addEventListener("click", (event) => {
   if (!button) return;
   state.filter = button.dataset.filter;
   document.querySelectorAll(".filter").forEach((filter) => filter.classList.toggle("active", filter === button));
+  renderCategories();
   renderTasks();
 });
 
