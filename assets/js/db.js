@@ -11,9 +11,10 @@
 
 const NextDB = (() => {
   const DATABASE_NAME = "next-personal-growth";
-  const DATABASE_VERSION = 2; // Versão 2 adiciona a store de ciclos.
+  const DATABASE_VERSION = 3; // Versão 3 adiciona as stores independentes de Finanças.
   const TASK_STORE = "tasks";
   const CYCLE_STORE = "cycles";
+  const FINANCE_STORES = ["income", "expenses", "creditCards", "subscriptions", "installments"];
 
   // Abre o banco. Se a versão mudou, onupgradeneeded prepara a estrutura.
   function open() {
@@ -42,6 +43,15 @@ const NextDB = (() => {
           cycleStore.createIndex("status", "status");
           cycleStore.createIndex("number", "number", { unique: true });
         }
+
+        // Dados financeiros não se misturam às tarefas/ciclos. Cada registro
+        // tem sua própria data ou competência mensal para consultas futuras.
+        FINANCE_STORES.forEach((storeName) => {
+          if (!database.objectStoreNames.contains(storeName)) {
+            const store = database.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+            store.createIndex("date", "date", { unique: false });
+          }
+        });
       };
 
       request.onsuccess = () => resolve(request.result);
@@ -80,6 +90,11 @@ const NextDB = (() => {
   return {
     tasks: createCrud(TASK_STORE),
     cycles: createCrud(CYCLE_STORE),
+    income: createCrud("income"),
+    expenses: createCrud("expenses"),
+    creditCards: createCrud("creditCards"),
+    subscriptions: createCrud("subscriptions"),
+    installments: createCrud("installments"),
   };
 })();
 

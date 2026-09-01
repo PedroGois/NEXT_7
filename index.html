@@ -24,11 +24,16 @@
         <span class="brand-mark">N</span>
         <span>next7<span class="brand-dot">.</span></span>
       </a>
+      <nav class="app-navigation" aria-label="Módulos principais">
+        <button class="app-nav-button active" data-view="cycle" type="button">Ciclo</button>
+        <button class="app-nav-button" data-view="finance" type="button">Finanças</button>
+      </nav>
       <div class="today" id="today"></div>
       <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
     </header>
 
     <main>
+      <div id="cycleView">
       <section class="cycle-panel" aria-labelledby="cycleTitle">
         <div class="cycle-summary">
           <div class="cycle-meta">
@@ -67,6 +72,15 @@
           <h3>Nenhuma tarefa neste dia</h3>
           <p>Crie um novo passo ou confira as próximas tarefas do ciclo.</p>
         </div>
+      </section>
+      </div>
+
+      <section class="finance-view" id="financeView" hidden aria-labelledby="financeTitle">
+        <div class="finance-heading"><div><p class="eyebrow">Finanças</p><h1 id="financeTitle">Seu mês, com clareza.</h1></div><div class="month-picker" aria-label="Selecionar mês"><button id="previousFinanceMonth" type="button" aria-label="Mês anterior"><i class="fa-solid fa-chevron-left"></i></button><strong id="financeMonthLabel"></strong><button id="nextFinanceMonth" type="button" aria-label="Próximo mês"><i class="fa-solid fa-chevron-right"></i></button></div></div>
+        <div class="finance-summary" id="financeSummary"></div>
+        <div class="finance-actions"><button class="primary-button" id="openExpenseForm" type="button"><i class="fa-solid fa-plus"></i> Adicionar gasto</button><button class="secondary-button" id="openIncomeForm" type="button">+ Adicionar renda</button></div>
+        <nav class="finance-tabs" id="financeTabs" aria-label="Áreas de finanças"><button class="finance-tab active" data-finance-tab="entries" type="button">Lançamentos</button><button class="finance-tab" data-finance-tab="cards" type="button">Cartões</button><button class="finance-tab" data-finance-tab="subscriptions" type="button">Assinaturas</button><button class="finance-tab" data-finance-tab="installments" type="button">Compromissos</button><button class="finance-tab" data-finance-tab="reports" type="button">Relatórios</button></nav>
+        <div id="financeContent"></div>
       </section>
 
     </main>
@@ -186,6 +200,14 @@
     </form>
   </dialog>
 
+  <dialog class="task-dialog" id="financeDialog">
+    <form class="task-form" id="financeForm">
+      <div class="dialog-heading"><div><p class="eyebrow" id="financeFormEyebrow">Finanças</p><h2 id="financeFormTitle"></h2></div><button class="icon-button" id="closeFinanceForm" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button></div>
+      <div id="financeFormFields"></div>
+      <div class="form-actions"><button class="secondary-button" id="cancelFinanceForm" type="button">Cancelar</button><button class="primary-button" type="submit">Salvar</button></div>
+    </form>
+  </dialog>
+
   <template id="taskTemplate">
     <article class="task-item">
       <button class="task-check" type="button" aria-label="Marcar tarefa como concluída"></button>
@@ -203,5 +225,6 @@
 
   <script src="assets/js/db.js"></script>
   <script src="assets/js/app.js"></script>
+  <script src="assets/js/finance.js"></script>
 </body>
 </html>
