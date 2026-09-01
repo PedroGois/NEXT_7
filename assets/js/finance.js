@@ -35,12 +35,9 @@ const Finance = (() => {
     return dateKey(new Date(month.getFullYear(), month.getMonth(), Math.min(Number(day), new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate())));
   }
 
-  function currentInvoiceMonth(card) {
-    return invoiceMonth(dateKey(), card);
-  }
-
-  function cardInvoiceForMonth(card) {
-    return card.currentInvoiceMonth === selectedKey() ? Number(card.currentInvoice || 0) : 0;
+  function cardInvoiceForMonth(card, month = selectedKey()) {
+    if (Object.prototype.hasOwnProperty.call(card.invoices || {}, month)) return Number(card.invoices[month] || 0);
+    return card.currentInvoiceMonth === month ? Number(card.currentInvoice || 0) : 0;
   }
 
   function recurringIncomeForMonth(item) {
@@ -63,9 +60,9 @@ const Finance = (() => {
     const chargeDate = [monthDate(previousMonth, item.chargeDay), monthDate(state.month, item.chargeDay)]
       .find((date) => date >= item.startDate && invoiceMonth(date, card) === selectedKey());
     if (!chargeDate) return null;
-    const alreadyInCurrentInvoice = selectedKey() === currentInvoiceMonth(card)
-      && chargeDate.slice(0, 7) === dateKey().slice(0, 7)
-      && Number(chargeDate.slice(8, 10)) <= new Date().getDate();
+    const invoiceWasRecorded = Object.prototype.hasOwnProperty.call(card.invoices || {}, selectedKey())
+      || card.currentInvoiceMonth === selectedKey();
+    const alreadyInCurrentInvoice = invoiceWasRecorded && chargeDate <= dateKey();
     return { ...item, card, invoice: selectedKey(), chargeDate, projected: !alreadyInCurrentInvoice };
   }
 
@@ -123,7 +120,7 @@ const Finance = (() => {
     const rows = state.cards.map((card) => {
       const current = data.cardInvoices.find((item) => item.card.id === card.id)?.current || 0;
       const projected = sum(data.projectedSubscriptions.filter((item) => Number(item.cardId) === card.id));
-      return listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay} · atual ${money(current)} · previsto ${money(projected)} · projetada ${money(current + projected)}`, current + projected, "", actions("card", "creditCards", card.id));
+      return listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay} · fatura ${money(current)} · previsto ${money(projected)} · projetada ${money(current + projected)}`, current + projected, "", actions("card", "creditCards", card.id));
     });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="card" type="button">+ Adicionar cartão</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Cadastre um cartão para enviar compras à fatura certa.</p></div>`}`;
   }
@@ -157,7 +154,7 @@ const Finance = (() => {
   function openForm(type, item = null) {
     state.form = type;
     state.editing = item;
-    const today = dateKey(state.month);
+    const today = dateKey();
     const value = (name, fallback = "") => escape(item?.[name] ?? fallback);
     const selected = (name, option) => String(item?.[name] ?? "") === String(option) ? "selected" : "";
     const checked = (name, fallback = false) => item ? Boolean(item[name]) : fallback;
@@ -170,7 +167,7 @@ const Finance = (() => {
         title: item ? "Editar gasto" : "Adicionar gasto",
         fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" value="${value("description")}" placeholder="Ex.: Gasolina ou almoço">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" value="${value("amount")}" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${value("date", today)}">`)}${field("Categoria", `<select name="category" required>${categories.map((entry) => `<option ${selected("category", entry)}>${entry}</option>`).join("")}</select>`, true)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect(item?.cardId ? `card:${item.cardId}` : item?.paymentMethod)}</select>`, true)}</div>`,
       },
-      card: { title: item ? "Editar cartão" : "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" value="${value("name")}" placeholder="Ex.: Nubank ou Itaú">`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("closingDay")}" placeholder="Ex.: 15">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("dueDay")}" placeholder="Ex.: 22">`)}${field("Fatura atual", `<input name="currentInvoice" required type="number" min="0" step="0.01" inputmode="decimal" value="${value("currentInvoice", 0)}" placeholder="0,00">`, true, "Valor já acumulado na fatura atual. Cobranças futuras serão mostradas separadamente.")}</div>` },
+      card: { title: item ? "Editar cartão" : "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" value="${value("name")}" placeholder="Ex.: Nubank ou Itaú">`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("closingDay")}" placeholder="Ex.: 15">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("dueDay")}" placeholder="Ex.: 22">`)}${field(`Fatura de ${new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(state.month)}`, `<input name="invoiceAmount" required type="number" min="0" step="0.01" inputmode="decimal" value="${item ? cardInvoiceForMonth(item) : 0}" placeholder="0,00">`, true, "Este valor pertence somente ao mês selecionado.")}</div>` },
       subscription: { title: item ? "Editar assinatura" : "Adicionar assinatura", fields: `<div class="finance-form-grid">${field("Nome", `<input name="name" required maxlength="100" value="${value("name")}" placeholder="Ex.: Spotify ou Netflix">`, true)}${field("Valor mensal", `<input name="amount" required type="number" min="0.01" step="0.01" value="${value("amount")}" placeholder="0,00">`)}${field("Dia da cobrança", `<input name="chargeDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("chargeDay")}" placeholder="Ex.: 15">`)}${field("Cartão", `<select name="cardId"><option value="">Pagamento direto</option>${state.cards.map((card) => `<option value="${card.id}" ${selected("cardId", card.id)}>${escape(card.name)}</option>`).join("")}</select>`, true)}${field("Início", `<input name="startDate" required type="date" value="${value("startDate", today)}">`)}${toggleField("active", "Assinatura ativa", "Entra automaticamente nos próximos meses.", checked("active", true))}</div>` },
       installment: { title: item ? "Editar compromisso" : "Adicionar compromisso", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" value="${value("description")}" placeholder="Ex.: iPhone ou eletrônicos">`, true)}${field("Valor da parcela", `<input name="amount" required type="number" min="0.01" step="0.01" value="${value("amount")}" placeholder="0,00">`)}${field("Total de parcelas", `<input name="totalInstallments" required type="number" min="1" value="${value("totalInstallments")}" placeholder="Ex.: 12">`)}${field("Parcela atual", `<input name="currentInstallment" required type="number" min="1" value="${value("currentInstallment")}" placeholder="Ex.: 1">`, true)}${field("Vencimento", `<input name="dueDate" required type="date" value="${value("dueDate", today)}">`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect(item?.paymentMethod)}</select>`, true)}</div>` },
     };
@@ -187,8 +184,13 @@ const Finance = (() => {
     data.amount = data.amount ? Number(data.amount) : 0;
     if (!state.editing) data.createdAt = new Date().toISOString();
     if (type === "card") {
-      data.currentInvoice = Number(data.currentInvoice || 0);
-      data.currentInvoiceMonth = invoiceMonth(dateKey(), data);
+      const invoices = { ...(state.editing?.invoices || {}) };
+      if (state.editing?.currentInvoiceMonth && !Object.prototype.hasOwnProperty.call(invoices, state.editing.currentInvoiceMonth)) {
+        invoices[state.editing.currentInvoiceMonth] = Number(state.editing.currentInvoice || 0);
+      }
+      invoices[selectedKey()] = Number(data.invoiceAmount || 0);
+      data.invoices = invoices;
+      delete data.invoiceAmount;
     }
     if (type === "subscription" && data.cardId) data.cardId = Number(data.cardId);
     const record = state.editing ? { ...state.editing, ...data, id: state.editing.id } : data;
