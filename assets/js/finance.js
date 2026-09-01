@@ -10,6 +10,8 @@ const Finance = (() => {
     view: document.querySelector("#financeView"), cycle: document.querySelector("#cycleView"), taskButton: document.querySelector("#openTaskForm"),
     month: document.querySelector("#financeMonthLabel"), summary: document.querySelector("#financeSummary"), content: document.querySelector("#financeContent"),
     dialog: document.querySelector("#financeDialog"), form: document.querySelector("#financeForm"), fields: document.querySelector("#financeFormFields"), title: document.querySelector("#financeFormTitle"), eyebrow: document.querySelector("#financeFormEyebrow"),
+    navigation: document.querySelectorAll(".app-nav-button"), tabs: document.querySelector("#financeTabs"), tabButtons: document.querySelectorAll(".finance-tab"),
+    previousMonth: document.querySelector("#previousFinanceMonth"), nextMonth: document.querySelector("#nextFinanceMonth"), openIncome: document.querySelector("#openIncomeForm"), openExpense: document.querySelector("#openExpenseForm"), closeForm: document.querySelector("#closeFinanceForm"), cancelForm: document.querySelector("#cancelFinanceForm"),
   };
 
   const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
@@ -61,8 +63,7 @@ const Finance = (() => {
     return { income, spent, committed, balance: income - spent - committed, cardExpenses, installments, subscriptions };
   }
 
-  function renderSummary() {
-    const data = totals();
+  function renderSummary(data) {
     const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
     el.summary.innerHTML = cards.map(([label, value, className = ""]) => `<article class="finance-card ${className}"><span>${label}</span><strong>${money(value)}</strong></article>`).join("");
   }
@@ -72,8 +73,7 @@ const Finance = (() => {
   }
   const removeButton = (store, id) => `<button class="delete-task finance-delete" type="button" data-finance-delete="${store}" data-id="${id}" aria-label="Excluir"><i class="fa-solid fa-trash-can"></i></button>`;
 
-  function renderEntries() {
-    const data = totals();
+  function renderEntries(data = totals()) {
     const incomes = state.income.filter((item) => recurringIncomeForMonth(item));
     const expenses = state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey());
     const rows = [
@@ -100,8 +100,8 @@ const Finance = (() => {
   }
   function renderReports() { el.content.innerHTML = `<div class="finance-empty"><i class="fa-solid fa-chart-line"></i><h3>Relatórios</h3><p>Os relatórios estarão disponíveis após seu primeiro mês de dados.</p></div>`; }
 
-  function renderContent() { ({ entries: renderEntries, cards: renderCards, subscriptions: renderSubscriptions, installments: renderInstallments, reports: renderReports }[state.tab])(); }
-  function render() { el.month.textContent = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(state.month); renderSummary(); renderContent(); }
+  function renderContent(data) { ({ entries: renderEntries, cards: renderCards, subscriptions: renderSubscriptions, installments: renderInstallments, reports: renderReports }[state.tab])(data); }
+  function render() { const data = totals(); el.month.textContent = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(state.month); renderSummary(data); renderContent(data); }
 
   function paymentSelect(selected = "") { return `<option value="">Forma de pagamento</option>${paymentOptions.map((item) => `<option ${selected === item ? "selected" : ""}>${item}</option>`).join("")}${state.cards.map((card) => `<option value="card:${card.id}">Cartão · ${escape(card.name)}</option>`).join("")}`; }
   function field(label, input, full = false) { return `<label class="${full ? "full" : ""}">${label}${input}</label>`; }
@@ -130,15 +130,15 @@ const Finance = (() => {
   }
 
   async function remove(store, id) { if (!confirm("Excluir este registro?")) return; await NextDB[store].remove(Number(id)); await load(); render(); }
-  function switchView(view) { const finance = view === "finance"; el.view.hidden = !finance; el.cycle.hidden = finance; el.taskButton.hidden = finance; document.querySelectorAll(".app-nav-button").forEach((button) => button.classList.toggle("active", button.dataset.view === view)); if (finance) render(); }
+  function switchView(view) { const finance = view === "finance"; el.view.hidden = !finance; el.cycle.hidden = finance; el.taskButton.hidden = finance; el.navigation.forEach((button) => button.classList.toggle("active", button.dataset.view === view)); if (finance) render(); }
 
   function bind() {
-    document.querySelectorAll(".app-nav-button").forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
-    document.querySelector("#previousFinanceMonth").addEventListener("click", () => { state.month.setMonth(state.month.getMonth() - 1); render(); });
-    document.querySelector("#nextFinanceMonth").addEventListener("click", () => { state.month.setMonth(state.month.getMonth() + 1); render(); });
-    document.querySelector("#openIncomeForm").addEventListener("click", () => openForm("income")); document.querySelector("#openExpenseForm").addEventListener("click", () => openForm("expense"));
-    document.querySelector("#closeFinanceForm").addEventListener("click", () => el.dialog.close()); document.querySelector("#cancelFinanceForm").addEventListener("click", () => el.dialog.close()); el.form.addEventListener("submit", saveForm);
-    document.querySelector("#financeTabs").addEventListener("click", (event) => { const button = event.target.closest("[data-finance-tab]"); if (!button) return; state.tab = button.dataset.financeTab; document.querySelectorAll(".finance-tab").forEach((tab) => tab.classList.toggle("active", tab === button)); renderContent(); });
+    el.navigation.forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
+    el.previousMonth.addEventListener("click", () => { state.month.setMonth(state.month.getMonth() - 1); render(); });
+    el.nextMonth.addEventListener("click", () => { state.month.setMonth(state.month.getMonth() + 1); render(); });
+    el.openIncome.addEventListener("click", () => openForm("income")); el.openExpense.addEventListener("click", () => openForm("expense"));
+    el.closeForm.addEventListener("click", () => el.dialog.close()); el.cancelForm.addEventListener("click", () => el.dialog.close()); el.form.addEventListener("submit", saveForm);
+    el.tabs.addEventListener("click", (event) => { const button = event.target.closest("[data-finance-tab]"); if (!button) return; state.tab = button.dataset.financeTab; el.tabButtons.forEach((tab) => tab.classList.toggle("active", tab === button)); renderContent(); });
     el.content.addEventListener("click", (event) => { const add = event.target.closest("[data-open-finance-form]"); if (add) openForm(add.dataset.openFinanceForm); const removeButton = event.target.closest("[data-finance-delete]"); if (removeButton) remove(removeButton.dataset.financeDelete, removeButton.dataset.id); });
   }
   async function init() { try { await load(); bind(); } catch (error) { console.error("Não foi possível carregar as finanças.", error); } }
