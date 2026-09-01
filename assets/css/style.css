@@ -243,12 +243,12 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .finance-actions .primary-button, .finance-actions .secondary-button { padding-inline: 10px; font-size: .78rem; }
   .finance-form-grid { grid-template-columns: 1fr; gap: 10px; }
   .finance-form-grid .full { grid-column: auto; }
-  .finance-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: start; gap: 8px 12px; padding: 14px; }
-  .finance-item-icon { grid-row: 1 / span 2; }
+  .finance-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: start; gap: 10px 12px; padding: 14px; overflow: visible; }
+  .finance-item-icon { grid-row: 1 / span 3; }
   .finance-item-copy { grid-column: 2; }
   .finance-item-copy small { white-space: normal; }
-  .finance-item-value { grid-column: 3; grid-row: 1; }
-  .finance-item-actions { grid-column: 2 / -1; grid-row: 2; justify-content: flex-end; }
+  .finance-item-value { grid-column: 2 / -1; grid-row: 2; text-align: right; }
+  .finance-item-actions { grid-column: 2 / -1; grid-row: 3; justify-content: flex-end; }
   .finance-item-actions .delete-task { display: grid; place-items: center; width: 38px; min-height: 38px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-light); }
   .cycle-meta { gap: 6px; }
   .filters { width: 100%; overflow-x: auto; scrollbar-width: none; }

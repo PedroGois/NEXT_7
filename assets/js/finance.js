@@ -113,8 +113,8 @@ const Finance = (() => {
       ...incomes.map((item) => listItem("fa-arrow-trend-up", item.description, `${item.source || "Renda"} · ${dateLabel(item.date)}${item.recurring ? " · recorrente" : ""}`, item.amount, "income", actions("income", "income", item.id))),
       ...expenses.map((item) => listItem("fa-arrow-trend-down", item.description, `${item.category} · ${item.paymentMethod} · ${dateLabel(item.date)}`, item.amount, "", actions("expense", "expenses", item.id))),
       ...data.cardExpenses.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-credit-card", item.description, `${item.category} · fatura de ${card?.name || "cartão removido"}`, item.amount, "", actions("expense", "expenses", item.id)); }),
-      ...data.installments.map((item) => listItem("fa-calendar-check", item.description, `Parcela ${item.current}/${item.totalInstallments} · ${item.paymentMethod}`, item.amount, "")),
-      ...data.subscriptions.map((item) => listItem("fa-repeat", item.name, `Assinatura · ${item.card ? `${item.projected ? "prevista para" : "já na"} fatura de ${item.card.name}` : "pagamento direto"}`, item.amount, "")),
+      ...data.installments.map((item) => listItem("fa-calendar-check", item.description, `Parcela ${item.current}/${item.totalInstallments} · ${item.paymentMethod}`, item.amount, "", actions("installment", "installments", item.id))),
+      ...data.subscriptions.map((item) => listItem("fa-repeat", item.name, `Assinatura · ${item.card ? `${item.projected ? "prevista para" : "já na"} fatura de ${item.card.name}` : "pagamento direto"}`, item.amount, "", actions("subscription", "subscriptions", item.id))),
     ];
     el.content.innerHTML = rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><i class="fa-solid fa-wallet"></i><p>Nenhum lançamento neste mês.</p></div>`;
   }
