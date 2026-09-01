@@ -176,9 +176,6 @@ async function loadData() {
 
 // RENDERIZAÇÃO
 
-/**
- * Renderiza cabeçalho: número, período e objetivo do ciclo
- */
 function renderCycleHeader() {
   const cycle = state.activeCycle;
   elements.cycleNumber.textContent = `Ciclo ${cycle.number} de ${PROGRAM_LENGTH}`;
@@ -187,9 +184,6 @@ function renderCycleHeader() {
   elements.cycleObjectiveDisplay.textContent = cycle.objective || "Defina o foco deste ciclo.";
 }
 
-/**
- * Renderiza dropdown de datas do ciclo no formulário de nova tarefa
- */
 function renderWeek() {
   elements.taskDate.innerHTML = "";
 
@@ -201,10 +195,6 @@ function renderWeek() {
   });
 }
 
-/**
- * Renderiza botões de navegação por dia: Geral + cada dia do ciclo
- * Destaca "Hoje" se aplicável
- */
 function renderDayNavigation() {
   const todayKey = toDateKey(new Date());
   const cycleDays = cycleDates(state.activeCycle);
@@ -238,9 +228,6 @@ function renderDayNavigation() {
   });
 }
 
-/**
- * Alterna o dia selecionado e re-renderiza tarefas
- */
 function selectDay(dateKey) {
   state.selectedDate = dateKey;
   renderDayNavigation();
@@ -248,9 +235,6 @@ function selectDay(dateKey) {
   renderTasks();
 }
 
-/**
- * Renderiza cards de progresso por categoria
- */
 function renderCategories() {
   elements.categoryGrid.innerHTML = "";
   const scopedTasks = tasksInActiveScope();
@@ -286,9 +270,6 @@ function renderCategories() {
   animateUpdate(elements.categoryGrid);
 }
 
-/**
- * Filtra tarefas visíveis: aplicar selectedDate, categoryFilter e filter
- */
 function visibleTasks() {
   let visible = tasksInActiveScope();
   if (state.categoryFilters.length) {
@@ -297,10 +278,7 @@ function visibleTasks() {
   return visible;
 }
 
-/**
- * Tarefas no escopo ativo: todos os dias OU um dia específico,
- * depois filtra por status (pending/completed/all)
- */
+// Aplica o status ao dia selecionado antes dos filtros de categoria.
 function tasksInActiveScope() {
   let visible = state.selectedDate === "all"
     ? [...state.tasks]
@@ -311,9 +289,6 @@ function tasksInActiveScope() {
   return visible;
 }
 
-/**
- * Renderiza lista de tarefas com filtros aplicados
- */
 function renderTasks() {
   const activeCategories = state.categoryFilters.map((key) => categories[key]);
   const isGeneral = state.selectedDate === "all";
@@ -368,9 +343,6 @@ function animateUpdate(element) {
   element.classList.add("fade-update");
 }
 
-/**
- * Re-renderiza a interface completa (após alterações de dados)
- */
 function render() {
   renderCycleHeader();
   renderWeek();
@@ -381,9 +353,6 @@ function render() {
 
 // AÇÕES DE CICLO E TAREFAS
 
-/**
- * Salva o objetivo do ciclo ativo no banco
- */
 async function saveObjective(event) {
   event.preventDefault();
   state.activeCycle.objective = elements.cycleObjective.value.trim();
@@ -392,9 +361,6 @@ async function saveObjective(event) {
   renderCycleHeader();
 }
 
-/**
- * Abre diálogo para criar nova tarefa com data pré-selecionada
- */
 function openTaskDialog(selectedDate = state.selectedDate) {
   state.editingTaskId = null;
   elements.taskForm.reset();
@@ -462,11 +428,7 @@ async function renameTaskDefinition(taskDefinitionId, title) {
   }));
 }
 
-/**
- * Calcula dados de recorrências para relatórios do ciclo
- * Agrupa tarefas por seriesId e calcula total e concluídas
- * @returns {Array} array de { seriesId, title, count, completed }
- */
+// Agrupa as ocorrências para congelar o progresso no histórico.
 function calculateRecurrenceSummary() {
   const seriesMap = new Map();
 
@@ -489,11 +451,7 @@ function calculateRecurrenceSummary() {
   }));
 }
 
-/**
- * Adiciona nova tarefa ou atualiza tarefa em edição.
- * Se shouldRepeat: cria múltiplas ocorrências (uma por dia) com mesmo seriesId.
- * Cada ocorrência é independente e pode ser concluída separadamente.
- */
+// Recorrências usam a mesma série, mas cada dia é concluído separadamente.
 async function addTask(event) {
   event.preventDefault();
   const data = new FormData(elements.taskForm);
@@ -567,9 +525,6 @@ async function addTask(event) {
   render();
 }
 
-/**
- * Marca/desmarca uma tarefa como concluída
- */
 async function toggleTask(id) {
   const task = state.tasks.find((item) => item.id === id);
   task.completed = !task.completed;
@@ -578,9 +533,6 @@ async function toggleTask(id) {
   render();
 }
 
-/**
- * Deleta uma tarefa com confirmação do usuário
- */
 async function deleteTask(id) {
   if (!confirm("Excluir esta tarefa? Essa ação não pode ser desfeita.")) return;
   await NextDB.tasks.remove(id);
@@ -588,9 +540,6 @@ async function deleteTask(id) {
   render();
 }
 
-/**
- * Abre diálogo com detalhes de uma tarefa
- */
 function openTaskDetail(id) {
   const task = state.tasks.find((item) => item.id === id);
   if (!task) return;
@@ -605,10 +554,7 @@ function openTaskDetail(id) {
   elements.taskDetailDialog.showModal();
 }
 
-/**
- * Abre diálogo para editar tarefa existente
- * Esconde opção de repetição (não permite mudar recorrência em tarefa já criada)
- */
+// A edição mantém a recorrência original e atualiza o nome da definição.
 function openEditTask(id) {
   const task = state.tasks.find((item) => item.id === id);
   if (!task) return;
@@ -632,22 +578,13 @@ function openEditTask(id) {
 
 // IMPORTAÇÃO E EXPORTAÇÃO
 
-/**
- * Exibe mensagem de importação/exportação na interface
- * @param {string} message - texto da mensagem
- * @param {boolean} isError - true para estilo de erro
- */
 function showImportMessage(message, isError = false) {
   elements.importMessage.textContent = message;
   elements.importMessage.classList.toggle("error", isError);
   elements.importMessage.hidden = false;
 }
 
-/**
- * Valida estrutura JSON do arquivo antes de importar
- * Garante que nenhuma tarefa inválida seja criada
- * @throws {Error} se arquivo não seguir schema esperado
- */
+// Valida o arquivo antes de alterar o ciclo atual.
 function validateWeekPlan(plan) {
   if (!plan || typeof plan !== "object") throw new Error("O arquivo não contém um planejamento válido.");
   if (!Array.isArray(plan.tasks)) throw new Error("O campo tasks precisa ser uma lista.");
@@ -668,11 +605,7 @@ function validateWeekPlan(plan) {
   });
 }
 
-/**
- * Importa tarefas de um arquivo JSON (validação + criação)
- * Atualiza objetivo do ciclo se incluído no arquivo
- * Evita duplicação re-verificando tarefas existentes
- */
+// Ignora uma ocorrência se ela já existir no mesmo dia e categoria.
 async function importWeekPlan(file) {
   try {
     const plan = JSON.parse(await file.text());
@@ -742,11 +675,7 @@ async function importWeekPlan(file) {
   }
 }
 
-/**
- * Converte ciclo atual para JSON exportável
- * Agrupa ocorrências com mesmo seriesId de volta em tarefas diárias
- * Inclui objetivo mas não inclui progresso (apenas planejamento)
- */
+// Exporta o planejamento sem alterar o progresso salvo.
 function buildWeekExport() {
   const exportedTasks = [];
   const exportedSeries = new Set();
@@ -777,10 +706,6 @@ function buildWeekExport() {
   };
 }
 
-/**
- * Exporta ciclo atual como JSON para download
- * Nome do arquivo inclui número do ciclo
- */
 function exportWeekPlan() {
   const plan = buildWeekExport();
   const content = JSON.stringify(plan, null, 2);
@@ -803,24 +728,13 @@ function exportWeekPlan() {
 
 // ENCERRAMENTO E HISTÓRICO
 
-/**
- * Abre diálogo para encerrar o ciclo ativo
- * Mostra resumo de tarefas concluídas vs. total
- */
 function openCloseCycleDialog() {
   const completed = state.tasks.filter((task) => task.completed).length;
   elements.closeCycleSummary.textContent = `Você concluiu ${completed} de ${state.tasks.length} tarefas neste ciclo.`;
   elements.closeCycleDialog.showModal();
 }
 
-/**
- * Encerra o ciclo ativo com resumo congelado
- * Cria ciclo seguinte automaticamente
- * Armazena dados de recorrências para relatórios futuros
- *
- * O resumo congelado não muda retroativamente se tarefas forem editadas depois.
- * Dados de recorrências (seriesId, título, contagem) são preservados no histórico.
- */
+// Congela o resultado e as recorrências antes de criar o próximo ciclo.
 async function finishCycle(event) {
   event.preventDefault();
   const completed = state.tasks.filter((task) => task.completed).length;
