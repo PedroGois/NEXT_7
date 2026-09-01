@@ -457,7 +457,7 @@ function openTaskDialog(selectedDate = state.selectedDate) {
 }
 
 function renderTaskDefinitionOptions() {
-  elements.existingTaskId.innerHTML = '<option value="">Selecione uma tarefa</option>';
+  elements.existingTaskId.innerHTML = '<option value="">Selecione uma tarefa já criada</option>';
   state.taskDefinitions.forEach((definition) => {
     const option = document.createElement("option");
     option.value = definition.id;
@@ -471,10 +471,14 @@ function setTaskMode(mode) {
   elements.existingTaskSelect.hidden = !usingExisting;
   elements.taskTitle.readOnly = usingExisting;
   elements.taskTitle.classList.toggle("is-readonly", usingExisting);
-  if (!usingExisting) return;
+  if (!usingExisting) {
+    elements.taskTitle.placeholder = "Ex.: Não fumar";
+    return;
+  }
 
   const definition = state.taskDefinitions.find((item) => item.id === elements.existingTaskId.value);
   elements.taskTitle.value = definition?.title || "";
+  elements.taskTitle.placeholder = "Escolha uma tarefa acima";
 }
 
 async function renameTaskDefinition(taskDefinitionId, title) {

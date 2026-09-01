@@ -33,6 +33,7 @@ body {
 
 button, input, select, textarea { font: inherit; }
 button { color: inherit; }
+button:focus:not(:focus-visible) { outline: none; }
 
 .app-shell { width: min(1180px, calc(100% - 40px)); max-width: 100%; margin: 0 auto; padding-bottom: 80px; }
 
@@ -93,7 +94,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 
 .primary-button, .secondary-button { border: 0; border-radius: 999px; padding: 14px 22px; font-weight: 700; cursor: pointer; transition: transform .2s, background .2s, box-shadow .2s; }
 .primary-button { flex: 0 0 auto; color: #151a0c; background: var(--accent); box-shadow: 0 4px 12px rgba(198, 243, 107, 0.15); }
-.primary-button:hover { background: #d3ff7e; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(198, 243, 107, 0.25); }
+@media (hover: hover) { .primary-button:hover { background: #d3ff7e; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(198, 243, 107, 0.25); } }
 .primary-button span, .primary-button i { margin-right: 8px; font-size: 1.05em; }
 .secondary-button { background: var(--surface-light); border: 1px solid var(--line); }
 .secondary-button:hover { background: rgba(255,255,255,.08); }
@@ -162,8 +163,8 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .view-task:hover, .edit-task:hover { color: var(--text); }
 .delete-task, .icon-button { border: 0; color: var(--muted); background: transparent; font-size: 1.4rem; cursor: pointer; }
 .delete-task { opacity: 0; transition: opacity .2s, color .2s; }
-.task-item:hover .delete-task, .delete-task:focus { opacity: 1; }
-.delete-task:hover { color: #ff7557; }
+.task-item:hover .delete-task, .delete-task:focus-visible { opacity: 1; }
+@media (hover: hover) { .delete-task:hover { color: #ff7557; } }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 .empty-state { padding: 55px 20px; border: 1px dashed rgba(255,255,255,.12); border-radius: var(--radius-lg); color: var(--muted); text-align: center; }
@@ -183,7 +184,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .task-form > input:focus, .task-form > select:focus, .task-form > textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(198, 243, 107, 0.1); background: #121419; }
 .task-form > textarea { resize: vertical; }
 .repeat-option { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 14px; border: 1.5px solid rgba(198, 243, 107, 0.2); border-radius: 12px; background: rgba(198, 243, 107, 0.04); cursor: pointer; transition: all .2s; }
-.repeat-option:hover { border-color: rgba(198, 243, 107, 0.35); background: rgba(198, 243, 107, 0.07); }
+@media (hover: hover) { .repeat-option:hover { border-color: rgba(198, 243, 107, 0.35); background: rgba(198, 243, 107, 0.07); } }
 .repeat-option input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: var(--accent); cursor: pointer; }
 .repeat-option span { display: flex; flex-direction: column; gap: 3px; }
 .repeat-option strong { font-size: .84rem; }
@@ -195,6 +196,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .task-identity-options input:checked + span { color: var(--text); border-color: rgba(198,243,107,.5); background: rgba(198,243,107,.08); }
 .existing-task-select { display: block; margin-top: 14px; color: #c6c7cc; font-size: .83rem; font-weight: 600; }
 .existing-task-select select { width: 100%; margin-top: 9px; padding: 14px 15px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--text); background: #0f1114; }
+.existing-task-select small { display: block; margin-top: 7px; color: var(--muted); font-size: .74rem; font-weight: 400; line-height: 1.4; }
 .dialog-copy, .form-note { color: var(--muted); line-height: 1.55; }
 .dialog-copy { margin-bottom: 24px; }
 .form-note { margin: 0; font-size: .78rem; }
@@ -238,10 +240,8 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .finance-card strong { font-size: 1rem; }
   .finance-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .finance-actions .primary-button, .finance-actions .secondary-button { padding-inline: 10px; font-size: .78rem; }
-  .finance-form-grid { grid-template-columns: 1fr; }
+  .finance-form-grid { grid-template-columns: 1fr; gap: 10px; }
   .finance-form-grid .full { grid-column: auto; }
-  .finance-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .finance-actions .primary-button, .finance-actions .secondary-button { padding-inline: 10px; font-size: .78rem; }
   .cycle-meta { gap: 6px; }
   .filters { width: 100%; }
   .filter { flex: 1; }
@@ -252,8 +252,14 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .view-task, .edit-task { min-height: 32px; }
   .delete-task { min-height: 32px; opacity: 1; }
   .task-dialog { width: 100%; max-width: none; max-height: calc(100dvh - env(safe-area-inset-top)); margin: auto 0 0; border-radius: 22px 22px 0 0; }
-  .task-form, .task-detail { padding: 22px 18px calc(22px + env(safe-area-inset-bottom)); }
+  .task-form, .task-detail { padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); }
   .task-form { max-height: 90dvh; overflow-y: auto; }
+  .dialog-heading { margin-bottom: 18px; }
+  .task-form > input, .task-form > select, .task-form > textarea { margin-bottom: 18px; padding: 12px 14px; }
+  .task-identity { margin-bottom: 18px; }
+  .existing-task-select { margin-top: 10px; }
+  .existing-task-select select, .finance-form-grid > label > :is(input, select) { padding: 12px 14px; }
+  .finance-form-grid .repeat-option { padding: 12px; }
   .form-actions { position: sticky; bottom: 0; padding-top: 12px; background: var(--surface); }
   .form-actions .primary-button, .form-actions .secondary-button { flex: 1; padding-inline: 12px; }
 }

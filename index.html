@@ -95,22 +95,23 @@
         <button class="icon-button" id="closeTaskForm" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
       </div>
 
-      <label for="taskTitle">O que você quer realizar?</label>
-      <input id="taskTitle" name="title" type="text" maxlength="100" placeholder="Ex.: Treinar por 30 minutos" required autofocus>
-
-      <label for="taskDescription">Detalhes da tarefa <span class="optional-label">(opcional)</span></label>
-      <textarea id="taskDescription" name="description" rows="3" maxlength="400" placeholder="Anotações, resultado esperado ou como fazer..."></textarea>
-
       <fieldset class="task-identity" id="taskIdentity">
-        <legend>Qual tarefa é essa?</legend>
+        <legend>Esta tarefa já foi criada antes?</legend>
         <div class="task-identity-options">
           <label><input type="radio" name="taskMode" value="new" checked><span>Nova tarefa</span></label>
           <label><input type="radio" name="taskMode" value="existing"><span>Usar uma já criada</span></label>
         </div>
         <label class="existing-task-select" id="existingTaskSelect" hidden for="existingTaskId">Tarefa já criada
           <select id="existingTaskId" name="existingTaskId"></select>
+          <small>Reutilize o mesmo ID para acompanhar a tarefa nos relatórios.</small>
         </label>
       </fieldset>
+
+      <label for="taskTitle">O que você quer realizar?</label>
+      <input id="taskTitle" name="title" type="text" maxlength="100" placeholder="Ex.: Não fumar" required autofocus>
+
+      <label for="taskDescription">Detalhes da tarefa <span class="optional-label">(opcional)</span></label>
+      <textarea id="taskDescription" name="description" rows="3" maxlength="400" placeholder="Anotações, resultado esperado ou como fazer..."></textarea>
 
       <label for="taskDate">Dia planejado</label>
       <select id="taskDate" name="scheduledDate" required></select>
