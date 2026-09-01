@@ -3,7 +3,7 @@
 // =============================================================
 // Sempre que arquivos importantes mudarem, altere o nome do cache.
 // Isso força a instalação da versão nova nos celulares.
-const CACHE_NAME = "next7-v5";
+const CACHE_NAME = "next7-v12";
 
 const APP_FILES = [
   "./",
@@ -11,6 +11,7 @@ const APP_FILES = [
   "./manifest.json",
   "./assets/css/style.css",
   "./assets/js/db.js",
+  "./assets/js/logic.js",
   "./assets/js/app.js",
   "./assets/images/icon.svg",
 ];
@@ -50,5 +51,20 @@ self.addEventListener("fetch", (event) => {
         return response;
       })
       .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || "./";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      const existing = clientList.find((client) => "focus" in client);
+      if (existing) {
+        existing.navigate(targetUrl);
+        return existing.focus();
+      }
+      return clients.openWindow ? clients.openWindow(targetUrl) : undefined;
+    })
   );
 });

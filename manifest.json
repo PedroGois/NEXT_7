@@ -4,6 +4,7 @@
   "description": "Planeje ciclos de 7 dias e acompanhe sua evolução pessoal.",
   "lang": "pt-BR",
   "start_url": "./",
+  "id": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
