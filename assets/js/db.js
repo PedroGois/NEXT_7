@@ -1,40 +1,21 @@
-// =============================================================
-// BANCO DE DADOS DO NEXT7 — IndexedDB com schema v5
-// =============================================================
-// Armazena ciclos, tarefas, dados financeiros e históricos para análise futura.
-// Sem dependências externas, compatível com offline-first e PWA.
-//
-// SCHEMA (version 5):
-// ┌─ cycles (para cada ciclo de 7 dias)
-// │  id, number, startDate, endDate, objective, feedback, status,
-// │  createdAt, closedAt, summary { total, completed, percentage },
-// │  recurrenceSummary [ { seriesId, taskDefinitionId, title, count, completed } ]
-// ├─ tasks (uma linha por ocorrência de tarefa)
-// │  id, taskDefinitionId (identificador estável), cycleId, seriesId (se recorrente), title, description,
-// │  category, scheduledDate, completed, completedAt, createdAt
-// └─ income, expenses, creditCards, subscriptions, installments (financeiro)
-//
-// API pública: NextDB.tasks, NextDB.cycles, NextDB.income, etc.
-// app.js não acessa IndexedDB diretamente.
+// BANCO DE DADOS
+// Mantém ciclos, tarefas e finanças em stores independentes.
 
 const NextDB = (() => {
   const DATABASE_NAME = "next-personal-growth";
-  const DATABASE_VERSION = 5;  // v5: adiciona índice taskDefinitionId para padronizar tarefas.
+  const DATABASE_VERSION = 5;
   const TASK_STORE = "tasks";
   const CYCLE_STORE = "cycles";
   const FINANCE_STORES = ["income", "expenses", "creditCards", "subscriptions", "installments"];
 
-  /**
-   * Abre ou cria o banco de dados com schema migrado.
-   * onupgradeneeded garante compatibilidade entre versões.
-   */
+  // Abre o banco e cria apenas stores ou índices ausentes.
   function open() {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
 
       request.onupgradeneeded = (event) => {
         const database = request.result;
-        // v1 → v4: Criar stores se não existem
+          // Stores novas recebem todos os índices necessários.
         if (!database.objectStoreNames.contains(TASK_STORE)) {
           const taskStore = database.createObjectStore(TASK_STORE, {
             keyPath: "id",
@@ -43,12 +24,11 @@ const NextDB = (() => {
           taskStore.createIndex("category", "category");
           taskStore.createIndex("completed", "completed");
           taskStore.createIndex("createdAt", "createdAt");
-          // v4: novo índice para buscar todas as tarefas de uma série
           taskStore.createIndex("seriesId", "seriesId");
           taskStore.createIndex("cycleId", "cycleId");
           taskStore.createIndex("taskDefinitionId", "taskDefinitionId");
         } else {
-          // Migra índices sem tocar em registros já existentes.
+          // Migração segura para bancos já existentes.
           const transaction = event.target.transaction;
           const taskStore = transaction.objectStore(TASK_STORE);
           if (!taskStore.indexNames.contains("seriesId")) {
@@ -71,7 +51,7 @@ const NextDB = (() => {
           cycleStore.createIndex("number", "number", { unique: true });
         }
 
-        // Dados financeiros: independentes de ciclos, com competência mensal
+        // Finanças não compartilham dados com os ciclos.
         FINANCE_STORES.forEach((storeName) => {
           if (!database.objectStoreNames.contains(storeName)) {
             const store = database.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
@@ -85,13 +65,7 @@ const NextDB = (() => {
     });
   }
 
-  /**
-   * Executa uma operação de leitura/escrita dentro de uma transação.
-   * @param {string} storeName - nome da store
-   * @param {string} mode - "readonly" ou "readwrite"
-   * @param {Function} operation - função que recebe a store
-   * @returns {Promise} resultado da operação
-   */
+  // Executa uma operação e fecha a conexão ao concluir.
   async function run(storeName, mode, operation) {
     const database = await open();
 
@@ -107,9 +81,7 @@ const NextDB = (() => {
     });
   }
 
-  /**
-   * Cria interface CRUD (Create, Read, Update, Delete) para uma store.
-   */
+  // Mantém o acesso às stores uniforme.
   function createCrud(storeName) {
     return {
       getAll: () => run(storeName, "readonly", (store) => store.getAll()),
@@ -119,7 +91,7 @@ const NextDB = (() => {
     };
   }
 
-  // API pública: expõe apenas métodos CRUD, nunca a conexão direta
+  // API PÚBLICA
   return {
     tasks: createCrud(TASK_STORE),
     cycles: createCrud(CYCLE_STORE),

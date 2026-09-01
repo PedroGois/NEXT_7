@@ -1,26 +1,9 @@
-// =============================================================
-// NEXT7 — Ciclos de 7 dias, Tarefas, Histórico e Relatórios
-// =============================================================
-// Aplicação simples de planejamento com IndexedDB, sem frameworks,
-// compatível com offline, PWA e mobile-first.
-//
-// FLUXO:
-// 1. Carrega ciclo ativo + histórico + tarefas do ciclo (loadData)
-// 2. Renderiza interface (render)
-// 3. Aguarda interação (eventos)
-// 4. Atualiza dados + re-renderiza
+// CICLOS E TAREFAS
 
-// =============================================================
-// 1. CONSTANTES E ESTADO
-// =============================================================
+// CONSTANTES E ESTADO
 
-/** Duração de cada ciclo em dias */
 const CYCLE_LENGTH = 7;
-
-/** Total de ciclos em um programa anual */
 const PROGRAM_LENGTH = 12;
-
-/** Categorias de vida e seus atributos */
 const categories = {
   corpo: { label: "Corpo", icon: "fa-dumbbell", message: "Energia e saúde", color: "#ff7557" },
   carreira: { label: "Carreira", icon: "fa-briefcase", message: "Trabalho e crescimento", color: "#8e7dff" },
@@ -28,22 +11,9 @@ const categories = {
   mente: { label: "Mente", icon: "fa-brain", message: "Clareza e aprendizado", color: "#f3bc4d" },
 };
 
-/**
- * STATE: Representa apenas o que está sendo exibido agora.
- * Dados permanentes ficam no IndexedDB.
- *
- * - activeCycle: ciclo atual que está ativo
- * - tasks: tarefas do ciclo ativo (todas, independente do filtro)
- * - history: ciclos encerrados, mais recentes primeiro
- * - filter: "all", "pending", "completed"
- * - categoryFilter: "all" ou uma das categorias
- * - selectedDate: "all" (geral) ou YYYY-MM-DD
- * - editingTaskId: null ou id da tarefa em edição
- * - detailTaskId: null ou id da tarefa cujo detalhe é exibido
- */
 const state = {
- activeCycle: null,
- tasks: [],
+  activeCycle: null,
+  tasks: [],
   taskDefinitions: [],
   history: [],
   filter: "all",
@@ -53,10 +23,7 @@ const state = {
   detailTaskId: null,
 };
 
-/**
- * ELEMENTOS DOM: referências para evitar buscas repetidas.
- * Abrange ciclos, tarefas, diálogos e histórico.
- */
+// ELEMENTOS DA TELA
 const elements = {
   cycleNumber: document.querySelector("#cycleNumber"),
   cyclePeriod: document.querySelector("#cyclePeriod"),
@@ -77,7 +44,6 @@ const elements = {
   taskDate: document.querySelector("#taskDate"),
   repeatDaily: document.querySelector("#repeatDaily"),
   taskIdentity: document.querySelector("#taskIdentity"),
-  existingTaskSelect: document.querySelector("#existingTaskSelect"),
   existingTaskId: document.querySelector("#existingTaskId"),
   closeCycleDialog: document.querySelector("#closeCycleDialog"),
   closeCycleForm: document.querySelector("#closeCycleForm"),
@@ -90,15 +56,9 @@ const elements = {
   taskDetailDialog: document.querySelector("#taskDetailDialog"),
 };
 
-// =============================================================
-// 2. UTILITÁRIOS DE DATA
-// =============================================================
-// Formato YYYY-MM-DD garante comparação lexical correta e compatibilidade
-// com input type="date" e localStorage.
+// DATAS
 
-/**
- * Converte Date para string YYYY-MM-DD (invariante de fuso horário)
- */
+// Mantém datas locais no formato usado pelos inputs e pelo banco.
 function toDateKey(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -106,42 +66,26 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-/**
- * Converte string YYYY-MM-DD para Date (começa meia-noite local)
- */
 function fromDateKey(dateKey) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day);
 }
 
-/**
- * Adiciona dias a uma data no formato YYYY-MM-DD
- */
 function addDays(dateKey, amount) {
   const date = fromDateKey(dateKey);
   date.setDate(date.getDate() + amount);
   return toDateKey(date);
 }
 
-/**
- * Calcula quantos dias inteiros entre duas datas no formato YYYY-MM-DD
- */
 function daysBetween(startKey, endKey) {
   const milliseconds = fromDateKey(endKey) - fromDateKey(startKey);
   return Math.floor(milliseconds / 86400000);
 }
 
-/**
- * Formata YYYY-MM-DD em string legível pt-BR (ex: "01 set.")
- * @param {Object} options - opções de Intl.DateTimeFormat
- */
 function formatDate(dateKey, options = { day: "2-digit", month: "short" }) {
   return new Intl.DateTimeFormat("pt-BR", options).format(fromDateKey(dateKey));
 }
 
-/**
- * Retorna array com as 7 datas do ciclo a partir de startDate
- */
 function cycleDates(cycle) {
   return Array.from({ length: CYCLE_LENGTH }, (_, index) => addDays(cycle.startDate, index));
 }
@@ -162,16 +106,9 @@ function buildTaskDefinitions(tasks) {
   return [...definitions.values()].sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
 }
 
-// =============================================================
-// 3. CRIAÇÃO E CARREGAMENTO DE CICLOS
-// =============================================================
+// CICLOS
 
-/**
- * Constrói um novo ciclo com valores padrão
- * @param {number} number - número do ciclo (1-12)
- * @param {string} startDate - YYYY-MM-DD, padrão é hoje
- * @returns {Object} ciclo com status "active"
- */
+// Cria um ciclo de sete dias com dados iniciais consistentes.
 function buildCycle(number, startDate = toDateKey(new Date())) {
   return {
     number,
@@ -187,9 +124,7 @@ function buildCycle(number, startDate = toDateKey(new Date())) {
   };
 }
 
-/**
- * Cria o próximo ciclo sequencial após um conjunto de ciclos
- */
+// Inicia o próximo ciclo após o último registro.
 async function createNextCycle(existingCycles) {
   const lastNumber = Math.max(0, ...existingCycles.map((cycle) => cycle.number));
   const cycle = buildCycle(lastNumber + 1);
@@ -197,11 +132,7 @@ async function createNextCycle(existingCycles) {
   return cycle;
 }
 
-/**
- * Carrega estado inicial: ciclo ativo, histórico, tarefas do ciclo ativo.
- * Realiza migração suave de tarefas órfãs.
- * Seleciona data padrão (hoje se no ciclo, senão primeiro dia).
- */
+// Carrega o ciclo ativo, histórico e tarefas já criadas.
 async function loadData() {
   const [cycles, allTasks] = await Promise.all([
     NextDB.cycles.getAll(),
@@ -242,9 +173,7 @@ async function loadData() {
     : state.activeCycle.startDate;
 }
 
-// =============================================================
-// 4. RENDERIZAÇÃO DO CICLO E TAREFAS
-// =============================================================
+// RENDERIZAÇÃO
 
 /**
  * Renderiza cabeçalho: número, período e objetivo do ciclo
@@ -423,9 +352,7 @@ function render() {
   renderTasks();
 }
 
-// =============================================================
-// 5. AÇÕES: OBJETIVO, TAREFAS E RECORRÊNCIAS
-// =============================================================
+// AÇÕES DE CICLO E TAREFAS
 
 /**
  * Salva o objetivo do ciclo ativo no banco
@@ -447,7 +374,7 @@ function openTaskDialog(selectedDate = state.selectedDate) {
   elements.repeatDaily.closest(".repeat-option").hidden = false;
   elements.taskIdentity.hidden = false;
   renderTaskDefinitionOptions();
-  setTaskMode("new");
+  syncTaskDefinitionSelection();
   elements.taskForm.querySelector(".eyebrow").textContent = "Novo passo";
   elements.taskForm.querySelector("h2").textContent = "Adicionar tarefa";
   elements.taskForm.querySelector('[type="submit"]').textContent = "Adicionar tarefa";
@@ -466,19 +393,18 @@ function renderTaskDefinitionOptions() {
   });
 }
 
-function setTaskMode(mode) {
-  const usingExisting = mode === "existing";
-  elements.existingTaskSelect.hidden = !usingExisting;
+function syncTaskDefinitionSelection() {
+  const definition = state.taskDefinitions.find((item) => item.id === elements.existingTaskId.value);
+  const usingExisting = Boolean(definition);
   elements.taskTitle.readOnly = usingExisting;
   elements.taskTitle.classList.toggle("is-readonly", usingExisting);
-  if (!usingExisting) {
+  if (!definition) {
     elements.taskTitle.placeholder = "Ex.: Não fumar";
     return;
   }
 
-  const definition = state.taskDefinitions.find((item) => item.id === elements.existingTaskId.value);
-  elements.taskTitle.value = definition?.title || "";
-  elements.taskTitle.placeholder = "Escolha uma tarefa acima";
+  elements.taskTitle.value = definition.title;
+  elements.taskTitle.placeholder = "";
 }
 
 async function renameTaskDefinition(taskDefinitionId, title) {
@@ -544,20 +470,15 @@ function calculateRecurrenceSummary() {
 async function addTask(event) {
   event.preventDefault();
   const data = new FormData(elements.taskForm);
-  const taskMode = data.get("taskMode");
   const selectedDefinition = state.taskDefinitions.find((item) => item.id === data.get("existingTaskId"));
-  const title = taskMode === "existing" ? selectedDefinition?.title || "" : data.get("title").trim();
+  const title = selectedDefinition?.title || data.get("title").trim();
   const firstDate = data.get("scheduledDate");
   const shouldRepeat = data.get("repeatDaily") === "on";
-  if (taskMode === "existing" && !selectedDefinition) {
-    alert("Selecione uma tarefa já criada.");
-    return;
-  }
   if (!title) return;
 
   const sameNameDefinition = state.taskDefinitions.find((item) => item.title.localeCompare(title, "pt-BR", { sensitivity: "accent" }) === 0);
-  if (state.editingTaskId === null && taskMode === "new" && sameNameDefinition) {
-    alert("Essa tarefa já existe. Escolha “Usar uma já criada” para manter o histórico padronizado.");
+  if (state.editingTaskId === null && !selectedDefinition && sameNameDefinition) {
+    alert("Essa tarefa já existe. Selecione-a acima para manter o histórico padronizado.");
     return;
   }
 
@@ -584,7 +505,7 @@ async function addTask(event) {
     : [firstDate];
 
   // taskDefinitionId padroniza o nome mesmo entre ocorrências e ciclos.
-  const taskDefinitionId = taskMode === "existing"
+  const taskDefinitionId = selectedDefinition
     ? selectedDefinition.id
     : createTaskDefinitionId();
 
@@ -677,14 +598,12 @@ function openEditTask(id) {
   elements.repeatDaily.checked = false;
   elements.repeatDaily.closest(".repeat-option").hidden = true;
   elements.taskIdentity.hidden = true;
-  elements.taskForm.querySelector('[name="taskMode"][value="new"]').checked = true;
+  elements.existingTaskId.value = "";
   elements.taskForm.querySelector(`[name="category"][value="${task.category}"]`).checked = true;
   elements.taskDialog.showModal();
 }
 
-// =============================================================
-// 6. IMPORTAÇÃO E EXPORTAÇÃO DE PLANEJAMENTO
-// =============================================================
+// IMPORTAÇÃO E EXPORTAÇÃO
 
 /**
  * Exibe mensagem de importação/exportação na interface
@@ -855,9 +774,7 @@ function exportWeekPlan() {
   showImportMessage(`Ciclo ${state.activeCycle.number} exportado com ${plan.tasks.length} tarefa(s) planejada(s).`);
 }
 
-// =============================================================
-// 7. ENCERRAMENTO DE CICLO E HISTÓRICO
-// =============================================================
+// ENCERRAMENTO E HISTÓRICO
 
 /**
  * Abre diálogo para encerrar o ciclo ativo
@@ -908,16 +825,9 @@ async function finishCycle(event) {
   render();
 }
 
-// =============================================================
-// 8. INICIALIZAÇÃO E EVENT LISTENERS
-// =============================================================
-
-// Tarefas: novo, editar, deletar, detalhe
+// EVENTOS
 document.querySelector("#openTaskForm").addEventListener("click", () => openTaskDialog());
-elements.taskIdentity.addEventListener("change", (event) => {
-  if (event.target.name === "taskMode") setTaskMode(event.target.value);
-  if (event.target.id === "existingTaskId") setTaskMode("existing");
-});
+elements.existingTaskId.addEventListener("change", syncTaskDefinitionSelection);
 document.querySelector("#closeTaskForm").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#cancelTask").addEventListener("click", () => elements.taskDialog.close());
 document.querySelector("#closeTaskDetail").addEventListener("click", () => elements.taskDetailDialog.close());
@@ -928,7 +838,6 @@ document.querySelector("#detailDeleteTask").addEventListener("click", async () =
   await deleteTask(id);
 });
 
-// Ciclos: configurações e encerramento
 document.querySelector("#openCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.showModal());
 document.querySelector("#closeCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.close());
 document.querySelector("#cancelCycleSettings").addEventListener("click", () => elements.cycleSettingsDialog.close());
@@ -939,7 +848,6 @@ document.querySelector("#openCloseCycle").addEventListener("click", () => {
 document.querySelector("#closeCycleDialogButton").addEventListener("click", () => elements.closeCycleDialog.close());
 document.querySelector("#cancelCloseCycle").addEventListener("click", () => elements.closeCycleDialog.close());
 
-// Importação e exportação
 elements.importWeekButton.addEventListener("click", () => elements.importWeekFile.click());
 elements.exportWeekButton.addEventListener("click", exportWeekPlan);
 elements.importWeekFile.addEventListener("change", () => {
@@ -947,12 +855,10 @@ elements.importWeekFile.addEventListener("change", () => {
   if (file) importWeekPlan(file);
 });
 
-// Formulários
 elements.taskForm.addEventListener("submit", addTask);
 elements.cycleSettingsForm.addEventListener("submit", saveObjective);
 elements.closeCycleForm.addEventListener("submit", finishCycle);
 
-// Filtros de tarefas
 document.querySelector("#filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");
   if (!button) return;
@@ -962,11 +868,7 @@ document.querySelector("#filters").addEventListener("click", (event) => {
   renderTasks();
 });
 
-/**
- * Inicialização da aplicação
- * Carrega dados + renderiza interface
- * Se houver erro, exibe mensagem ao usuário
- */
+// INICIALIZAÇÃO
 async function init() {
   try {
     await loadData();
@@ -981,13 +883,12 @@ async function init() {
 
 init();
 
-/**
- * Service Worker: permite usar a app offline
- * Carrega recursos em cache para acesso sem conexão
- */
+// Mantém o PWA disponível offline quando o navegador permitir.
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js")
+      // Força a verificação da nova versão quando a PWA é aberta no iPhone.
+      .then((registration) => registration.update())
       .catch((error) => console.error("Falha ao registrar o modo offline.", error));
   });
 }

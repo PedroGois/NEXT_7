@@ -72,12 +72,12 @@ button:focus:not(:focus-visible) { outline: none; }
 .finance-item-value.income { color: var(--accent); }
 .finance-add-row { width: 100%; margin-bottom: 14px; padding: 12px; border: 1px dashed rgba(198,243,107,.35); border-radius: 12px; color: var(--accent); background: transparent; font-weight: 700; text-align: left; cursor: pointer; }
 .finance-empty { padding: 35px 20px; border: 1px dashed var(--line); border-radius: var(--radius-md); color: var(--muted); text-align: center; }.finance-empty p { margin: 6px 0 0; }
-.finance-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.finance-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .finance-form-grid .full { grid-column: 1 / -1; }
-.finance-form-grid label { display: flex; flex-direction: column; gap: 7px; }
-.finance-form-grid label > span { font-weight: 600; font-size: .85rem; color: #e0e0dc; }
-.finance-form-grid input, .finance-form-grid select { padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #0f1114; color: var(--text); font-size: .95rem; transition: all .2s; }
-.finance-form-grid input:focus, .finance-form-grid select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(198, 243, 107, 0.1); background: #121419; }
+.finance-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.finance-field > span { color: #e0e0dc; font-size: .85rem; font-weight: 600; }
+.finance-field :is(input, select) { width: 100%; min-width: 0; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #0f1114; color: var(--text); font-size: .95rem; transition: all .2s; }
+.finance-field :is(input, select):focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(198, 243, 107, 0.1); background: #121419; }
 .finance-form-grid input::placeholder { color: #555; }
 .finance-form-grid .repeat-option { margin: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(198, 243, 107, 0.03); }
 .field-helper { color: var(--muted); font-size: .74rem; margin-top: 2px; }
@@ -190,11 +190,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .repeat-option strong { font-size: .84rem; }
 .repeat-option small { color: var(--muted); font-size: .74rem; line-height: 1.4; }
 .task-identity { margin: 0 0 24px; }
-.task-identity-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.task-identity-options input { position: absolute; opacity: 0; }
-.task-identity-options span { display: block; padding: 11px 8px; border: 1px solid var(--line); border-radius: 11px; color: var(--muted); text-align: center; font-size: .8rem; cursor: pointer; }
-.task-identity-options input:checked + span { color: var(--text); border-color: rgba(198,243,107,.5); background: rgba(198,243,107,.08); }
-.existing-task-select { display: block; margin-top: 14px; color: #c6c7cc; font-size: .83rem; font-weight: 600; }
+.existing-task-select { display: block; color: #c6c7cc; font-size: .83rem; font-weight: 600; }
 .existing-task-select select { width: 100%; margin-top: 9px; padding: 14px 15px; border: 1.5px solid var(--line); border-radius: 12px; color: var(--text); background: #0f1114; }
 .existing-task-select small { display: block; margin-top: 7px; color: var(--muted); font-size: .74rem; font-weight: 400; line-height: 1.4; }
 .dialog-copy, .form-note { color: var(--muted); line-height: 1.55; }
@@ -221,12 +217,11 @@ fieldset { margin: 0; padding: 0; border: 0; }
 
 @media (max-width: 560px) {
   .app-shell { width: min(100% - 24px, 1180px); padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
-  /* Em telas estreitas, a ação ocupa uma segunda linha para não esconder a navegação. */
-  .topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; min-height: 66px; padding: 8px 0; }
+  .topbar { min-height: 66px; }
   .brand { min-width: 0; }
   .app-navigation { justify-self: end; margin: 0; }
   .app-nav-button { padding: 7px 10px; font-size: .74rem; }
-  .topbar .compact-add { grid-column: 1 / -1; justify-self: end; }
+  .tasks-heading .compact-add { align-self: flex-end; }
   h1 { margin-bottom: 0; font-size: 2.1rem; }
   .section-heading, .tasks-heading { align-items: flex-start; flex-direction: column; }
   .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -258,7 +253,7 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .task-form > input, .task-form > select, .task-form > textarea { margin-bottom: 18px; padding: 12px 14px; }
   .task-identity { margin-bottom: 18px; }
   .existing-task-select { margin-top: 10px; }
-  .existing-task-select select, .finance-form-grid > label > :is(input, select) { padding: 12px 14px; }
+  .existing-task-select select, .finance-field :is(input, select) { padding: 12px 14px; }
   .finance-form-grid .repeat-option { padding: 12px; }
   .form-actions { position: sticky; bottom: 0; padding-top: 12px; background: var(--surface); }
   .form-actions .primary-button, .form-actions .secondary-button { flex: 1; padding-inline: 12px; }

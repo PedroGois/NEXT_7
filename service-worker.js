@@ -1,9 +1,6 @@
-// =============================================================
-// SERVICE WORKER: CACHE OFFLINE DO NEXT7
-// =============================================================
-// Sempre que arquivos importantes mudarem, altere o nome do cache.
-// Isso força a instalação da versão nova nos celulares.
-const CACHE_NAME = "next7-v10";
+// CACHE OFFLINE
+// A nova versão força a atualização da PWA nos aparelhos.
+const CACHE_NAME = "next7-v13";
 
 const APP_FILES = [
   "./",
@@ -16,7 +13,7 @@ const APP_FILES = [
   "./assets/images/icon.svg",
 ];
 
-// Instalação: guarda a estrutura principal do app no aparelho.
+// Guarda a estrutura principal no aparelho.
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
@@ -25,7 +22,7 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Ativação: remove versões antigas do cache.
+// Remove versões antigas do cache.
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys()
@@ -36,7 +33,7 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Navegação: tenta buscar a versão nova; se estiver offline, usa o cache.
+// Busca conteúdo novo e usa o cache sem conexão.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   if (new URL(event.request.url).origin !== self.location.origin) return;

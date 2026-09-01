@@ -28,7 +28,6 @@
         <button class="app-nav-button active" data-view="cycle" type="button">Ciclo</button>
         <button class="app-nav-button" data-view="finance" type="button">Finanças</button>
       </nav>
-      <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
     </header>
 
     <main>
@@ -54,6 +53,7 @@
             <h2 id="tasksTitle">Suas tarefas</h2>
             <p class="selected-date" id="selectedDateLabel">Tudo em um só lugar.</p>
           </div>
+          <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
         </div>
 
         <div class="sticky-filters">
@@ -96,12 +96,8 @@
       </div>
 
       <fieldset class="task-identity" id="taskIdentity">
-        <legend>Esta tarefa já foi criada antes?</legend>
-        <div class="task-identity-options">
-          <label><input type="radio" name="taskMode" value="new" checked><span>Nova tarefa</span></label>
-          <label><input type="radio" name="taskMode" value="existing"><span>Usar uma já criada</span></label>
-        </div>
-        <label class="existing-task-select" id="existingTaskSelect" hidden for="existingTaskId">Tarefa já criada
+        <legend>Reutilizar uma tarefa já criada <span class="optional-label">(opcional)</span></legend>
+        <label class="existing-task-select" for="existingTaskId">Tarefa cadastrada
           <select id="existingTaskId" name="existingTaskId"></select>
           <small>Reutilize o mesmo ID para acompanhar a tarefa nos relatórios.</small>
         </label>
