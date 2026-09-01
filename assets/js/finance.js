@@ -104,7 +104,7 @@ const Finance = (() => {
   }
   const editButton = (type, id) => `<button class="delete-task finance-delete" type="button" data-finance-edit="${type}" data-id="${id}" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`;
   const removeButton = (store, id) => `<button class="delete-task finance-delete" type="button" data-finance-delete="${store}" data-id="${id}" aria-label="Excluir"><i class="fa-solid fa-trash-can"></i></button>`;
-  const actions = (type, store, id) => `${editButton(type, id)}${removeButton(store, id)}`;
+  const actions = (type, store, id) => `<div class="finance-item-actions">${editButton(type, id)}${removeButton(store, id)}</div>`;
 
   function renderEntries(data = totals()) {
     const incomes = state.income.filter((item) => recurringIncomeForMonth(item));
