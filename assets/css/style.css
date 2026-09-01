@@ -143,6 +143,10 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .filters { display: flex; gap: 6px; padding: 4px; border-radius: 999px; background: var(--surface); }
 .filter { border: 0; border-radius: 999px; padding: 8px 14px; color: var(--muted); background: transparent; font-size: .8rem; cursor: pointer; }
 .filter.active { color: var(--text); background: var(--surface-light); }
+.filter-clear { border: 0; padding: 8px 10px; color: var(--accent); background: transparent; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.fade-update { animation: fade-update .5s ease; }
+@keyframes fade-update { from { opacity: .35; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fade-update { animation: none; } }
 .selected-date { margin: 7px 0 0; color: var(--muted); font-size: .82rem; text-transform: capitalize; }
 .task-list { display: grid; gap: 10px; }
 .task-item { display: flex; align-items: center; gap: 15px; padding: 17px 18px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); transition: border-color .2s; }
@@ -238,8 +242,8 @@ fieldset { margin: 0; padding: 0; border: 0; }
   .finance-form-grid { grid-template-columns: 1fr; gap: 10px; }
   .finance-form-grid .full { grid-column: auto; }
   .cycle-meta { gap: 6px; }
-  .filters { width: 100%; }
-  .filter { flex: 1; }
+  .filters { width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .filter, .filter-clear { flex: 0 0 auto; }
   .category-options { grid-template-columns: repeat(2, 1fr); }
   .task-item { align-items: flex-start; gap: 11px; padding: 15px 13px; }
   .task-content h3 { white-space: normal; line-height: 1.35; }

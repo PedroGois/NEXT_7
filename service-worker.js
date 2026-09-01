@@ -1,6 +1,6 @@
 // CACHE OFFLINE
 // A nova versão força a atualização da PWA nos aparelhos.
-const CACHE_NAME = "next7-v13";
+const CACHE_NAME = "next7-v14";
 
 const APP_FILES = [
   "./",

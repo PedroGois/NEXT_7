@@ -16,8 +16,8 @@ const state = {
   tasks: [],
   taskDefinitions: [],
   history: [],
-  filter: "all",
-  categoryFilter: "all",
+  statusFilters: [],
+  categoryFilters: [],
   selectedDate: null,
   editingTaskId: null,
   detailTaskId: null,
@@ -33,6 +33,7 @@ const elements = {
   cycleSettingsForm: document.querySelector("#cycleSettingsForm"),
   dayNavigation: document.querySelector("#dayNavigation"),
   categoryGrid: document.querySelector("#categoryGrid"),
+  clearFilters: document.querySelector("#clearFilters"),
   taskList: document.querySelector("#taskList"),
   tasksTitle: document.querySelector("#tasksTitle"),
   selectedDateLabel: document.querySelector("#selectedDateLabel"),
@@ -243,6 +244,7 @@ function renderDayNavigation() {
 function selectDay(dateKey) {
   state.selectedDate = dateKey;
   renderDayNavigation();
+  renderCategories();
   renderTasks();
 }
 
@@ -260,7 +262,7 @@ function renderCategories() {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "category-card category-filter";
-    card.classList.toggle("active", state.categoryFilter === key);
+    card.classList.toggle("active", state.categoryFilters.includes(key));
     card.style.setProperty("--category-color", category.color);
     card.innerHTML = `
       <div class="category-top">
@@ -271,12 +273,17 @@ function renderCategories() {
       <small>${completed} concluída(s)</small>
     `;
     card.addEventListener("click", () => {
-      state.categoryFilter = state.categoryFilter === key ? "all" : key;
+      state.categoryFilters = state.categoryFilters.includes(key)
+        ? state.categoryFilters.filter((filter) => filter !== key)
+        : [...state.categoryFilters, key];
+      updateFilterControls();
       renderCategories();
       renderTasks();
     });
     elements.categoryGrid.append(card);
   });
+
+  animateUpdate(elements.categoryGrid);
 }
 
 /**
@@ -284,7 +291,9 @@ function renderCategories() {
  */
 function visibleTasks() {
   let visible = tasksInActiveScope();
-  if (state.categoryFilter !== "all") visible = visible.filter((task) => task.category === state.categoryFilter);
+  if (state.categoryFilters.length) {
+    visible = visible.filter((task) => state.categoryFilters.includes(task.category));
+  }
   return visible;
 }
 
@@ -296,8 +305,9 @@ function tasksInActiveScope() {
   let visible = state.selectedDate === "all"
     ? [...state.tasks]
     : state.tasks.filter((task) => task.scheduledDate === state.selectedDate);
-  if (state.filter === "pending") visible = visible.filter((task) => !task.completed);
-  if (state.filter === "completed") visible = visible.filter((task) => task.completed);
+  if (state.statusFilters.length === 1) {
+    visible = visible.filter((task) => state.statusFilters[0] === "completed" ? task.completed : !task.completed);
+  }
   return visible;
 }
 
@@ -305,12 +315,12 @@ function tasksInActiveScope() {
  * Renderiza lista de tarefas com filtros aplicados
  */
 function renderTasks() {
-  const activeCategory = categories[state.categoryFilter];
+  const activeCategories = state.categoryFilters.map((key) => categories[key]);
   const isGeneral = state.selectedDate === "all";
   const isToday = state.selectedDate === toDateKey(new Date());
   elements.tasksTitle.textContent = isGeneral ? "Geral" : isToday ? "Hoje" : formatDate(state.selectedDate, { weekday: "long" });
-  elements.selectedDateLabel.textContent = activeCategory
-    ? `${activeCategory.label} · ${activeCategory.message}`
+  elements.selectedDateLabel.textContent = activeCategories.length
+    ? activeCategories.map((category) => category.label).join(" · ")
     : isGeneral ? "Todas as tarefas do ciclo" : formatDate(state.selectedDate, { day: "2-digit", month: "long" });
 
   const tasks = visibleTasks().sort((a, b) => {
@@ -339,6 +349,23 @@ function renderTasks() {
     item.querySelector(".delete-task").addEventListener("click", () => deleteTask(task.id));
     elements.taskList.append(item);
   });
+
+  animateUpdate(elements.taskList);
+}
+
+function updateFilterControls() {
+  const hasFilters = state.categoryFilters.length || state.statusFilters.length;
+  document.querySelectorAll(".filter").forEach((button) => {
+    const filter = button.dataset.filter;
+    button.classList.toggle("active", filter === "all" ? !state.statusFilters.length : state.statusFilters.includes(filter));
+  });
+  elements.clearFilters.hidden = !hasFilters;
+}
+
+function animateUpdate(element) {
+  element.classList.remove("fade-update");
+  void element.offsetWidth;
+  element.classList.add("fade-update");
 }
 
 /**
@@ -862,8 +889,21 @@ elements.closeCycleForm.addEventListener("submit", finishCycle);
 document.querySelector("#filters").addEventListener("click", (event) => {
   const button = event.target.closest("[data-filter]");
   if (!button) return;
-  state.filter = button.dataset.filter;
-  document.querySelectorAll(".filter").forEach((filter) => filter.classList.toggle("active", filter === button));
+  const filter = button.dataset.filter;
+  state.statusFilters = filter === "all"
+    ? []
+    : state.statusFilters.includes(filter)
+      ? state.statusFilters.filter((item) => item !== filter)
+      : [...state.statusFilters, filter];
+  updateFilterControls();
+  renderCategories();
+  renderTasks();
+});
+
+elements.clearFilters.addEventListener("click", () => {
+  state.statusFilters = [];
+  state.categoryFilters = [];
+  updateFilterControls();
   renderCategories();
   renderTasks();
 });
