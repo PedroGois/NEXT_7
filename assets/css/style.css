@@ -167,7 +167,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .view-task:hover, .edit-task:hover { color: var(--text); }
 .delete-task, .icon-button { border: 0; color: var(--muted); background: transparent; font-size: 1.4rem; cursor: pointer; }
 .delete-task { opacity: 0; transition: opacity .2s, color .2s; }
-.task-item:hover .delete-task, .delete-task:focus-visible { opacity: 1; }
+.task-item:hover .delete-task, .finance-item:hover .delete-task, .delete-task:focus-visible { opacity: 1; }
 @media (hover: hover) { .delete-task:hover { color: #ff7557; } }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

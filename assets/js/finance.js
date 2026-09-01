@@ -6,7 +6,7 @@ const Finance = (() => {
   // ESTADO E ELEMENTOS
   const categories = ["🏠 Custos fixos", "🏍️ Moto", "🧴 Cuidado pessoal", "🍔 Comida & lazer", "Outros"];
   const paymentOptions = ["Pix", "Dinheiro", "Débito"];
-  const state = { month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), tab: "entries", income: [], expenses: [], cards: [], subscriptions: [], installments: [], form: null };
+  const state = { month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), tab: "entries", income: [], expenses: [], cards: [], subscriptions: [], installments: [], form: null, editing: null };
   const el = {
     view: document.querySelector("#financeView"), cycle: document.querySelector("#cycleView"), taskButton: document.querySelector("#openTaskForm"),
     month: document.querySelector("#financeMonthLabel"), summary: document.querySelector("#financeSummary"), content: document.querySelector("#financeContent"),
@@ -31,6 +31,18 @@ const Finance = (() => {
     return monthKey(new Date(year, month - 1 + (day > Number(card.closingDay) ? 1 : 0), 1));
   }
 
+  function monthDate(month, day) {
+    return dateKey(new Date(month.getFullYear(), month.getMonth(), Math.min(Number(day), new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate())));
+  }
+
+  function currentInvoiceMonth(card) {
+    return invoiceMonth(dateKey(), card);
+  }
+
+  function cardInvoiceForMonth(card) {
+    return card.currentInvoiceMonth === selectedKey() ? Number(card.currentInvoice || 0) : 0;
+  }
+
   function recurringIncomeForMonth(item) {
     if (!item.recurring) return item.date.slice(0, 7) === selectedKey() ? Number(item.amount) : 0;
     return item.date.slice(0, 7) <= selectedKey() ? Number(item.amount) : 0;
@@ -46,7 +58,15 @@ const Finance = (() => {
   function subscriptionForMonth(item) {
     if (!item.active || item.startDate.slice(0, 7) > selectedKey()) return null;
     const card = state.cards.find((entry) => entry.id === Number(item.cardId));
-    return { ...item, card, invoice: card ? invoiceMonth(`${selectedKey()}-${String(Math.min(Number(item.chargeDay), 28)).padStart(2, "0")}`, card) : selectedKey() };
+    if (!card) return { ...item, card: null, invoice: selectedKey(), chargeDate: monthDate(state.month, item.chargeDay), projected: true };
+    const previousMonth = new Date(state.month.getFullYear(), state.month.getMonth() - 1, 1);
+    const chargeDate = [monthDate(previousMonth, item.chargeDay), monthDate(state.month, item.chargeDay)]
+      .find((date) => date >= item.startDate && invoiceMonth(date, card) === selectedKey());
+    if (!chargeDate) return null;
+    const alreadyInCurrentInvoice = selectedKey() === currentInvoiceMonth(card)
+      && chargeDate.slice(0, 7) === dateKey().slice(0, 7)
+      && Number(chargeDate.slice(8, 10)) <= new Date().getDate();
+    return { ...item, card, invoice: selectedKey(), chargeDate, projected: !alreadyInCurrentInvoice };
   }
 
   // DADOS E TOTAIS
@@ -66,8 +86,10 @@ const Finance = (() => {
     const cardExpenses = state.expenses.filter((item) => item.cardId && invoiceMonth(item.date, state.cards.find((card) => card.id === Number(item.cardId))) === selectedKey());
     const installments = state.installments.map(installmentForMonth).filter(Boolean);
     const subscriptions = state.subscriptions.map(subscriptionForMonth).filter(Boolean);
-    const committed = sum(cardExpenses) + sum(installments) + sum(subscriptions);
-    return { income, spent, committed, balance: income - spent - committed, cardExpenses, installments, subscriptions };
+    const cardInvoices = state.cards.map((card) => ({ card, current: cardInvoiceForMonth(card) }));
+    const projectedSubscriptions = subscriptions.filter((item) => item.projected);
+    const committed = sum(cardExpenses) + sum(installments) + sum(projectedSubscriptions) + cardInvoices.reduce((total, item) => total + item.current, 0);
+    return { income, spent, committed, balance: income - spent - committed, cardExpenses, installments, subscriptions, projectedSubscriptions, cardInvoices };
   }
 
   // RENDERIZAÇÃO
@@ -80,31 +102,37 @@ const Finance = (() => {
   function listItem(icon, title, detail, value, type = "", remove = "") {
     return `<article class="finance-item"><span class="finance-item-icon"><i class="fa-solid ${icon}"></i></span><div class="finance-item-copy"><strong>${escape(title)}</strong><small>${escape(detail)}</small></div><strong class="finance-item-value ${type}">${money(value)}</strong>${remove}</article>`;
   }
+  const editButton = (type, id) => `<button class="delete-task finance-delete" type="button" data-finance-edit="${type}" data-id="${id}" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`;
   const removeButton = (store, id) => `<button class="delete-task finance-delete" type="button" data-finance-delete="${store}" data-id="${id}" aria-label="Excluir"><i class="fa-solid fa-trash-can"></i></button>`;
+  const actions = (type, store, id) => `${editButton(type, id)}${removeButton(store, id)}`;
 
   function renderEntries(data = totals()) {
     const incomes = state.income.filter((item) => recurringIncomeForMonth(item));
     const expenses = state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey());
     const rows = [
-      ...incomes.map((item) => listItem("fa-arrow-trend-up", item.description, `${item.source || "Renda"} · ${dateLabel(item.date)}${item.recurring ? " · recorrente" : ""}`, item.amount, "income", removeButton("income", item.id))),
-      ...expenses.map((item) => listItem("fa-arrow-trend-down", item.description, `${item.category} · ${item.paymentMethod} · ${dateLabel(item.date)}`, item.amount, "", removeButton("expenses", item.id))),
-      ...data.cardExpenses.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-credit-card", item.description, `${item.category} · fatura de ${card?.name || "cartão removido"}`, item.amount, "", removeButton("expenses", item.id)); }),
+      ...incomes.map((item) => listItem("fa-arrow-trend-up", item.description, `${item.source || "Renda"} · ${dateLabel(item.date)}${item.recurring ? " · recorrente" : ""}`, item.amount, "income", actions("income", "income", item.id))),
+      ...expenses.map((item) => listItem("fa-arrow-trend-down", item.description, `${item.category} · ${item.paymentMethod} · ${dateLabel(item.date)}`, item.amount, "", actions("expense", "expenses", item.id))),
+      ...data.cardExpenses.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-credit-card", item.description, `${item.category} · fatura de ${card?.name || "cartão removido"}`, item.amount, "", actions("expense", "expenses", item.id)); }),
       ...data.installments.map((item) => listItem("fa-calendar-check", item.description, `Parcela ${item.current}/${item.totalInstallments} · ${item.paymentMethod}`, item.amount, "")),
-      ...data.subscriptions.map((item) => listItem("fa-repeat", item.name, `Assinatura · ${item.card ? `fatura de ${item.card.name}` : "pagamento direto"}`, item.amount, "")),
+      ...data.subscriptions.map((item) => listItem("fa-repeat", item.name, `Assinatura · ${item.card ? `${item.projected ? "prevista para" : "já na"} fatura de ${item.card.name}` : "pagamento direto"}`, item.amount, "")),
     ];
     el.content.innerHTML = rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><i class="fa-solid fa-wallet"></i><p>Nenhum lançamento neste mês.</p></div>`;
   }
 
-  function renderCards() {
-    const rows = state.cards.map((card) => listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay}`, 0, "", removeButton("creditCards", card.id)));
+  function renderCards(data = totals()) {
+    const rows = state.cards.map((card) => {
+      const current = data.cardInvoices.find((item) => item.card.id === card.id)?.current || 0;
+      const projected = sum(data.projectedSubscriptions.filter((item) => Number(item.cardId) === card.id));
+      return listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay} · atual ${money(current)} · previsto ${money(projected)} · projetada ${money(current + projected)}`, current + projected, "", actions("card", "creditCards", card.id));
+    });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="card" type="button">+ Adicionar cartão</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Cadastre um cartão para enviar compras à fatura certa.</p></div>`}`;
   }
   function renderSubscriptions() {
-    const rows = state.subscriptions.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-repeat", item.name, `${item.active ? "Ativa" : "Inativa"} · dia ${item.chargeDay}${card ? ` · ${card.name}` : ""}`, item.amount, "", removeButton("subscriptions", item.id)); });
+    const rows = state.subscriptions.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-repeat", item.name, `${item.active ? "Ativa" : "Inativa"} · dia ${item.chargeDay}${card ? ` · ${card.name}` : ""}`, item.amount, "", actions("subscription", "subscriptions", item.id)); });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="subscription" type="button">+ Adicionar assinatura</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Assinaturas ativas entram automaticamente no mês.</p></div>`}`;
   }
   function renderInstallments() {
-    const rows = state.installments.map((item) => { const visible = installmentForMonth(item); return listItem("fa-calendar-check", item.description, `${visible ? `Parcela ${visible.current}/${item.totalInstallments}` : `A partir de ${dateLabel(item.dueDate)}`} · ${item.paymentMethod}`, item.amount, "", removeButton("installments", item.id)); });
+    const rows = state.installments.map((item) => { const visible = installmentForMonth(item); return listItem("fa-calendar-check", item.description, `${visible ? `Parcela ${visible.current}/${item.totalInstallments}` : `A partir de ${dateLabel(item.dueDate)}`} · ${item.paymentMethod}`, item.amount, "", actions("installment", "installments", item.id)); });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="installment" type="button">+ Adicionar compromisso</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Registre parcelas, financiamentos e compromissos mensais.</p></div>`}`;
   }
   function renderReports() { el.content.innerHTML = `<div class="finance-empty"><i class="fa-solid fa-chart-line"></i><h3>Relatórios</h3><p>Os relatórios estarão disponíveis após seu primeiro mês de dados.</p></div>`; }
@@ -126,21 +154,25 @@ const Finance = (() => {
 
   // FORMULÁRIOS
 
-  function openForm(type) {
+  function openForm(type, item = null) {
     state.form = type;
+    state.editing = item;
     const today = dateKey(state.month);
+    const value = (name, fallback = "") => escape(item?.[name] ?? fallback);
+    const selected = (name, option) => String(item?.[name] ?? "") === String(option) ? "selected" : "";
+    const checked = (name, fallback = false) => item ? Boolean(item[name]) : fallback;
     const forms = {
       income: {
-        title: "Adicionar renda",
-        fields: `<div class="finance-form-grid">${field("Tipo de renda", `<select name="source" required><option value="Salário mensal">Salário mensal</option><option value="Outra fonte de renda">Outra fonte de renda</option></select>`, true)}${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Salário ou trabalho extra">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${toggleField("recurring", "Renda recorrente", "Será considerada nos próximos meses.")}</div>`,
+        title: item ? "Editar renda" : "Adicionar renda",
+        fields: `<div class="finance-form-grid">${field("Tipo de renda", `<select name="source" required><option value="Salário mensal" ${selected("source", "Salário mensal")}>Salário mensal</option><option value="Outra fonte de renda" ${selected("source", "Outra fonte de renda")}>Outra fonte de renda</option></select>`, true)}${field("Descrição", `<input name="description" required maxlength="100" value="${value("description")}" placeholder="Ex.: Salário ou trabalho extra">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" value="${value("amount")}" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${value("date", today)}">`)}${toggleField("recurring", "Renda recorrente", "Será considerada nos próximos meses.", checked("recurring"))}</div>`,
       },
       expense: {
-        title: "Adicionar gasto",
-        fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Gasolina ou almoço">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${field("Categoria", `<select name="category" required>${categories.map((item) => `<option>${item}</option>`).join("")}</select>`, true)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`, true)}</div>`,
+        title: item ? "Editar gasto" : "Adicionar gasto",
+        fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" value="${value("description")}" placeholder="Ex.: Gasolina ou almoço">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" value="${value("amount")}" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${value("date", today)}">`)}${field("Categoria", `<select name="category" required>${categories.map((entry) => `<option ${selected("category", entry)}>${entry}</option>`).join("")}</select>`, true)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect(item?.cardId ? `card:${item.cardId}` : item?.paymentMethod)}</select>`, true)}</div>`,
       },
-      card: { title: "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" placeholder="Ex.: Nubank ou Itaú">`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="Ex.: 15">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="Ex.: 22">`)}</div>` },
-      subscription: { title: "Adicionar assinatura", fields: `<div class="finance-form-grid">${field("Nome", `<input name="name" required maxlength="100" placeholder="Ex.: Spotify ou Netflix">`, true)}${field("Valor mensal", `<input name="amount" required type="number" min="0.01" step="0.01" placeholder="0,00">`)}${field("Dia da cobrança", `<input name="chargeDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="Ex.: 15">`)}${field("Cartão", `<select name="cardId"><option value="">Pagamento direto</option>${state.cards.map((card) => `<option value="${card.id}">${escape(card.name)}</option>`).join("")}</select>`, true)}${field("Início", `<input name="startDate" required type="date" value="${today}">`)}${toggleField("active", "Assinatura ativa", "Entra automaticamente nos próximos meses.", true)}</div>` },
-      installment: { title: "Adicionar compromisso", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: iPhone ou eletrônicos">`, true)}${field("Valor da parcela", `<input name="amount" required type="number" min="0.01" step="0.01" placeholder="0,00">`)}${field("Total de parcelas", `<input name="totalInstallments" required type="number" min="1" placeholder="Ex.: 12">`)}${field("Parcela atual", `<input name="currentInstallment" required type="number" min="1" placeholder="Ex.: 1">`, true)}${field("Vencimento", `<input name="dueDate" required type="date" value="${today}">`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`, true)}</div>` },
+      card: { title: item ? "Editar cartão" : "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" value="${value("name")}" placeholder="Ex.: Nubank ou Itaú">`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("closingDay")}" placeholder="Ex.: 15">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("dueDay")}" placeholder="Ex.: 22">`)}${field("Fatura atual", `<input name="currentInvoice" required type="number" min="0" step="0.01" inputmode="decimal" value="${value("currentInvoice", 0)}" placeholder="0,00">`, true, "Valor já acumulado na fatura atual. Cobranças futuras serão mostradas separadamente.")}</div>` },
+      subscription: { title: item ? "Editar assinatura" : "Adicionar assinatura", fields: `<div class="finance-form-grid">${field("Nome", `<input name="name" required maxlength="100" value="${value("name")}" placeholder="Ex.: Spotify ou Netflix">`, true)}${field("Valor mensal", `<input name="amount" required type="number" min="0.01" step="0.01" value="${value("amount")}" placeholder="0,00">`)}${field("Dia da cobrança", `<input name="chargeDay" required type="number" min="1" max="31" inputmode="numeric" value="${value("chargeDay")}" placeholder="Ex.: 15">`)}${field("Cartão", `<select name="cardId"><option value="">Pagamento direto</option>${state.cards.map((card) => `<option value="${card.id}" ${selected("cardId", card.id)}>${escape(card.name)}</option>`).join("")}</select>`, true)}${field("Início", `<input name="startDate" required type="date" value="${value("startDate", today)}">`)}${toggleField("active", "Assinatura ativa", "Entra automaticamente nos próximos meses.", checked("active", true))}</div>` },
+      installment: { title: item ? "Editar compromisso" : "Adicionar compromisso", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" value="${value("description")}" placeholder="Ex.: iPhone ou eletrônicos">`, true)}${field("Valor da parcela", `<input name="amount" required type="number" min="0.01" step="0.01" value="${value("amount")}" placeholder="0,00">`)}${field("Total de parcelas", `<input name="totalInstallments" required type="number" min="1" value="${value("totalInstallments")}" placeholder="Ex.: 12">`)}${field("Parcela atual", `<input name="currentInstallment" required type="number" min="1" value="${value("currentInstallment")}" placeholder="Ex.: 1">`, true)}${field("Vencimento", `<input name="dueDate" required type="date" value="${value("dueDate", today)}">`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect(item?.paymentMethod)}</select>`, true)}</div>` },
     };
     const form = forms[type]; el.title.textContent = form.title; el.eyebrow.textContent = "Finanças"; el.fields.innerHTML = form.fields; el.dialog.showModal();
   }
@@ -148,11 +180,20 @@ const Finance = (() => {
   async function saveForm(event) {
     event.preventDefault(); const data = Object.fromEntries(new FormData(el.form)); const type = state.form;
     if (type === "expense" && data.paymentMethod.startsWith("card:")) { data.cardId = Number(data.paymentMethod.split(":")[1]); data.paymentMethod = "Cartão"; }
+    if (type === "expense" && data.paymentMethod !== "Cartão") delete data.cardId;
     if (type === "income") data.recurring = data.recurring === "on";
     if (type === "subscription") data.active = data.active === "on";
     const store = { income: "income", expense: "expenses", card: "creditCards", subscription: "subscriptions", installment: "installments" }[type];
-    data.amount = data.amount ? Number(data.amount) : 0; data.createdAt = new Date().toISOString();
-    await NextDB[store].add(data); el.form.reset(); el.dialog.close(); await load(); render();
+    data.amount = data.amount ? Number(data.amount) : 0;
+    if (!state.editing) data.createdAt = new Date().toISOString();
+    if (type === "card") {
+      data.currentInvoice = Number(data.currentInvoice || 0);
+      data.currentInvoiceMonth = invoiceMonth(dateKey(), data);
+    }
+    if (type === "subscription" && data.cardId) data.cardId = Number(data.cardId);
+    const record = state.editing ? { ...state.editing, ...data, id: state.editing.id } : data;
+    if (state.editing) await NextDB[store].update(record); else await NextDB[store].add(record);
+    state.editing = null; el.form.reset(); el.dialog.close(); await load(); render();
   }
 
   async function remove(store, id) { if (!confirm("Excluir este registro?")) return; await NextDB[store].remove(Number(id)); await load(); render(); }
@@ -167,7 +208,15 @@ const Finance = (() => {
     el.openIncome.addEventListener("click", () => openForm("income")); el.openExpense.addEventListener("click", () => openForm("expense"));
     el.closeForm.addEventListener("click", () => el.dialog.close()); el.cancelForm.addEventListener("click", () => el.dialog.close()); el.form.addEventListener("submit", saveForm);
     el.tabs.addEventListener("click", (event) => { const button = event.target.closest("[data-finance-tab]"); if (!button) return; state.tab = button.dataset.financeTab; el.tabButtons.forEach((tab) => tab.classList.toggle("active", tab === button)); renderContent(); });
-    el.content.addEventListener("click", (event) => { const add = event.target.closest("[data-open-finance-form]"); if (add) openForm(add.dataset.openFinanceForm); const removeButton = event.target.closest("[data-finance-delete]"); if (removeButton) remove(removeButton.dataset.financeDelete, removeButton.dataset.id); });
+    el.content.addEventListener("click", (event) => {
+      const add = event.target.closest("[data-open-finance-form]"); if (add) openForm(add.dataset.openFinanceForm);
+      const edit = event.target.closest("[data-finance-edit]");
+      if (edit) {
+        const collection = { income: state.income, expense: state.expenses, card: state.cards, subscription: state.subscriptions, installment: state.installments }[edit.dataset.financeEdit];
+        openForm(edit.dataset.financeEdit, collection.find((item) => item.id === Number(edit.dataset.id)));
+      }
+      const removeButton = event.target.closest("[data-finance-delete]"); if (removeButton) remove(removeButton.dataset.financeDelete, removeButton.dataset.id);
+    });
   }
   async function init() { try { await load(); bind(); } catch (error) { console.error("Não foi possível carregar as finanças.", error); } }
   init();
