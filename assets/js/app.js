@@ -26,7 +26,6 @@ const state = {
 };
 
 const elements = {
-  today: document.querySelector("#today"),
   cycleNumber: document.querySelector("#cycleNumber"),
   cyclePeriod: document.querySelector("#cyclePeriod"),
   cycleObjective: document.querySelector("#cycleObjective"),
@@ -669,11 +668,6 @@ document.querySelector("#filters").addEventListener("click", (event) => {
 });
 
 async function init() {
-  const formattedToday = new Intl.DateTimeFormat("pt-BR", {
-    weekday: "long", day: "2-digit", month: "long",
-  }).format(new Date());
-  elements.today.textContent = formattedToday.charAt(0).toUpperCase() + formattedToday.slice(1);
-
   try {
     await loadData();
     render();

@@ -78,7 +78,6 @@ button { color: inherit; }
 .brand { display: flex; align-items: center; gap: 10px; color: var(--text); font: 800 1.35rem "Manrope"; text-decoration: none; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #12150d; background: var(--accent); font-size: .9rem; }
 .brand-dot { color: var(--accent); }
-.today { color: var(--muted); font-size: .9rem; }
 
 .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 32px; padding: 72px 0 58px; }
 .eyebrow { margin: 0 0 12px; color: var(--accent); font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
@@ -123,6 +122,7 @@ h1 { max-width: 750px; margin-bottom: 18px; font: 800 clamp(2.6rem, 6vw, 5.3rem)
 .overview, .tasks-section { padding-top: 28px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 .section-heading h2 { margin-bottom: 0; font: 700 1.8rem "Manrope"; letter-spacing: -.04em; }
+.tasks-heading-copy { display: grid; justify-items: start; gap: 16px; }
 .progress-label { margin-bottom: 3px; color: var(--muted); font-size: .9rem; }
 .progress-label strong { color: var(--text); }
 
@@ -229,12 +229,10 @@ fieldset { margin: 0; padding: 0; border: 0; }
 
 @media (max-width: 560px) {
   .app-shell { width: min(100% - 24px, 1180px); padding-bottom: calc(48px + env(safe-area-inset-bottom)); }
-  .topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; min-height: 66px; padding: 8px 0; }
+  .topbar { min-height: 66px; }
   .brand { min-width: 0; }
   .app-navigation { justify-self: end; margin: 0; }
   .app-nav-button { padding: 7px 10px; font-size: .74rem; }
-  .topbar .compact-add { grid-column: 1 / -1; justify-self: end; }
-  .today { display: none; }
   .hero { gap: 20px; padding: 28px 0 24px; }
   h1 { margin-bottom: 0; font-size: 2.1rem; }
   .hero-copy { display: none; }

@@ -28,8 +28,6 @@
         <button class="app-nav-button active" data-view="cycle" type="button">Ciclo</button>
         <button class="app-nav-button" data-view="finance" type="button">Finanças</button>
       </nav>
-      <div class="today" id="today"></div>
-      <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
     </header>
 
     <main>
@@ -50,10 +48,13 @@
       <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
         <nav class="day-navigation" id="dayNavigation" aria-label="Selecionar dia das tarefas"></nav>
         <div class="section-heading tasks-heading">
-          <div>
+          <div class="tasks-heading-copy">
+            <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Nova tarefa</button>
+            <div>
             <p class="eyebrow">Ciclo atual</p>
             <h2 id="tasksTitle">Suas tarefas</h2>
             <p class="selected-date" id="selectedDateLabel">Tudo em um só lugar.</p>
+            </div>
           </div>
         </div>
 
