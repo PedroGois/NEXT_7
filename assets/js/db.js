@@ -3,7 +3,7 @@
 
 const NextDB = (() => {
   const DATABASE_NAME = "next-personal-growth";
-  const DATABASE_VERSION = 5;
+  const DATABASE_VERSION = 6;
   const TASK_STORE = "tasks";
   const CYCLE_STORE = "cycles";
   const FINANCE_STORES = ["income", "expenses", "creditCards", "subscriptions", "installments"];
@@ -58,6 +58,12 @@ const NextDB = (() => {
             store.createIndex("date", "date", { unique: false });
           }
         });
+
+        // Migração única: limpa somente os dados financeiros antigos.
+        // Ciclos e tarefas permanecem intactos.
+        if (event.oldVersion < 6) {
+          FINANCE_STORES.forEach((storeName) => event.target.transaction.objectStore(storeName).clear());
+        }
       };
 
       request.onsuccess = () => resolve(request.result);
