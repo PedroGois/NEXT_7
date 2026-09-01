@@ -28,6 +28,7 @@
         <button class="app-nav-button active" data-view="cycle" type="button">Ciclo</button>
         <button class="app-nav-button" data-view="finance" type="button">Finanças</button>
       </nav>
+      <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Tarefa</button>
     </header>
 
     <main>
@@ -48,13 +49,10 @@
       <section class="tasks-section" id="tasksSection" aria-labelledby="tasksTitle">
         <nav class="day-navigation" id="dayNavigation" aria-label="Selecionar dia das tarefas"></nav>
         <div class="section-heading tasks-heading">
-          <div class="tasks-heading-copy">
-            <button class="primary-button compact-add" id="openTaskForm" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Nova tarefa</button>
-            <div>
+          <div>
             <p class="eyebrow">Ciclo atual</p>
             <h2 id="tasksTitle">Suas tarefas</h2>
             <p class="selected-date" id="selectedDateLabel">Tudo em um só lugar.</p>
-            </div>
           </div>
         </div>
 
@@ -102,6 +100,17 @@
 
       <label for="taskDescription">Detalhes da tarefa <span class="optional-label">(opcional)</span></label>
       <textarea id="taskDescription" name="description" rows="3" maxlength="400" placeholder="Anotações, resultado esperado ou como fazer..."></textarea>
+
+      <fieldset class="task-identity" id="taskIdentity">
+        <legend>Qual tarefa é essa?</legend>
+        <div class="task-identity-options">
+          <label><input type="radio" name="taskMode" value="new" checked><span>Nova tarefa</span></label>
+          <label><input type="radio" name="taskMode" value="existing"><span>Usar uma já criada</span></label>
+        </div>
+        <label class="existing-task-select" id="existingTaskSelect" hidden for="existingTaskId">Tarefa já criada
+          <select id="existingTaskId" name="existingTaskId"></select>
+        </label>
+      </fieldset>
 
       <label for="taskDate">Dia planejado</label>
       <select id="taskDate" name="scheduledDate" required></select>
@@ -169,6 +178,7 @@
       </div>
       <dl class="detail-list">
         <div><dt>Objetivo do ciclo</dt><dd id="detailObjective"></dd></div>
+        <div><dt>ID da tarefa</dt><dd id="detailTaskDefinitionId"></dd></div>
         <div><dt>Data planejada</dt><dd id="detailDate"></dd></div>
         <div><dt>Área da vida</dt><dd id="detailCategory"></dd></div>
         <div><dt>Status</dt><dd id="detailStatus"></dd></div>

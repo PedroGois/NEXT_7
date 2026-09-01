@@ -12,6 +12,7 @@ Next7 é um organizador pessoal de ciclos de 7 dias. Ele reúne tarefas em quatr
 - Salva os dados no navegador com IndexedDB;
 - Importa e exporta planejamentos em JSON;
 - Fecha o ciclo, registra um feedback e inicia o próximo;
+- Inclui Finanças mensal com receitas, gastos, cartões, assinaturas e parcelas;
 - Pode ser instalada como PWA e usada offline após a primeira abertura.
 
 ## Como usar
@@ -41,7 +42,8 @@ NEXT_7/
 │   ├── images/icon.svg
 │   └── js/
 │       ├── app.js
-│       └── db.js
+│       ├── db.js
+│       └── finance.js
 ├── index.html
 ├── manifest.json
 ├── service-worker.js

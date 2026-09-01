@@ -1,8 +1,13 @@
 // =============================================================
-// FINANÇAS — módulo mensal independente dos ciclos de 7 dias.
+// FINANÇAS — Módulo mensal independente dos ciclos de 7 dias
 // =============================================================
+// Permite rastrear receitas, despesas, cartões, assinaturas e compromissos.
+// Cada transação é armazenada com data completa para análise posterior.
+// Sem dependência com ciclos: funciona sob calendário mensal gregoriano.
+
 
 const Finance = (() => {
+  // Estado apenas da tela mensal; não compartilha dados com os ciclos semanais.
   const categories = ["🏠 Custos fixos", "🏍️ Moto", "🧴 Cuidado pessoal", "🍔 Comida & lazer", "Outros"];
   const paymentOptions = ["Pix", "Dinheiro", "Débito"];
   const state = { month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), tab: "entries", income: [], expenses: [], cards: [], subscriptions: [], installments: [], form: null };
@@ -13,6 +18,11 @@ const Finance = (() => {
     navigation: document.querySelectorAll(".app-nav-button"), tabs: document.querySelector("#financeTabs"), tabButtons: document.querySelectorAll(".finance-tab"),
     previousMonth: document.querySelector("#previousFinanceMonth"), nextMonth: document.querySelector("#nextFinanceMonth"), openIncome: document.querySelector("#openIncomeForm"), openExpense: document.querySelector("#openExpenseForm"), closeForm: document.querySelector("#closeFinanceForm"), cancelForm: document.querySelector("#cancelFinanceForm"),
   };
+
+  // Chaves ISO permitem comparar meses e datas sem efeito de fuso horário.
+  // =============================================================
+  // Datas, formatação e regras de competência
+  // =============================================================
 
   const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
   const selectedKey = () => monthKey(state.month);
@@ -46,6 +56,10 @@ const Finance = (() => {
     return { ...item, card, invoice: card ? invoiceMonth(`${selectedKey()}-${String(Math.min(Number(item.chargeDay), 28)).padStart(2, "0")}`, card) : selectedKey() };
   }
 
+  // =============================================================
+  // Dados e totais mensais
+  // =============================================================
+
   async function load() {
     const [income, expenses, cards, subscriptions, installments] = await Promise.all([
       NextDB.income.getAll(), NextDB.expenses.getAll(), NextDB.creditCards.getAll(), NextDB.subscriptions.getAll(), NextDB.installments.getAll(),
@@ -54,6 +68,8 @@ const Finance = (() => {
   }
 
   function totals() {
+    // Um gasto direto é pago no mês; cartão, assinatura e parcela são compromisso.
+    // Assim o saldo não desconta a mesma compra duas vezes.
     const income = state.income.reduce((total, item) => total + recurringIncomeForMonth(item), 0);
     const spent = sum(state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey()));
     const cardExpenses = state.expenses.filter((item) => item.cardId && invoiceMonth(item.date, state.cards.find((card) => card.id === Number(item.cardId))) === selectedKey());
@@ -62,6 +78,10 @@ const Finance = (() => {
     const committed = sum(cardExpenses) + sum(installments) + sum(subscriptions);
     return { income, spent, committed, balance: income - spent - committed, cardExpenses, installments, subscriptions };
   }
+
+  // =============================================================
+  // Renderização da tela e das abas
+  // =============================================================
 
   function renderSummary(data) {
     const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
@@ -104,17 +124,21 @@ const Finance = (() => {
   function render() { const data = totals(); el.month.textContent = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(state.month); renderSummary(data); renderContent(data); }
 
   function paymentSelect(selected = "") { return `<option value="">Forma de pagamento</option>${paymentOptions.map((item) => `<option ${selected === item ? "selected" : ""}>${item}</option>`).join("")}${state.cards.map((card) => `<option value="card:${card.id}">Cartão · ${escape(card.name)}</option>`).join("")}`; }
-  function field(label, input, full = false) { return `<label class="${full ? "full" : ""}">${label}${input}</label>`; }
+  function field(label, input, full = false, helper = "") { return `<label class="${full ? "full" : ""}"><span>${label}</span>${input}${helper ? `<small class="field-helper">${helper}</small>` : ""}</label>`; }
+
+  // =============================================================
+  // Formulários, persistência e navegação
+  // =============================================================
 
   function openForm(type) {
     state.form = type;
     const today = dateKey(state.month);
     const forms = {
-      income: { title: "Adicionar renda", fields: `<div class="finance-form-grid">${field("Fonte", `<select name="source"><option>Salário mensal</option><option>Outra fonte de renda</option></select>`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Empresa ou trabalho extra">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal">`, true)}${field("", `<label class="repeat-option"><input name="recurring" type="checkbox"><span><strong>Renda recorrente</strong><small>Será considerada nos próximos meses.</small></span></label>`, true)}</div>` },
-      expense: { title: "Adicionar gasto", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Gasolina">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal">`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${field("Categoria", `<select name="category" required>${categories.map((item) => `<option>${item}</option>`).join("")}</select>`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`)}</div>` },
-      card: { title: "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" placeholder="Ex.: Nubank" >`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric">`)}</div>` },
-      subscription: { title: "Adicionar assinatura", fields: `<div class="finance-form-grid">${field("Nome", `<input name="name" required maxlength="100" placeholder="Ex.: Spotify">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01">`)}${field("Cartão", `<select name="cardId"><option value="">Pagamento direto</option>${state.cards.map((card) => `<option value="${card.id}">${escape(card.name)}</option>`).join("")}</select>`)}${field("Dia da cobrança", `<input name="chargeDay" required type="number" min="1" max="31">`)}${field("Início", `<input name="startDate" required type="date" value="${today}">`)}${field("", `<label class="repeat-option"><input name="active" type="checkbox" checked><span><strong>Assinatura ativa</strong><small>Entra automaticamente nos meses seguintes.</small></span></label>`, true)}</div>` },
-      installment: { title: "Adicionar compromisso", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: iPhone">`, true)}${field("Valor da parcela", `<input name="amount" required type="number" min="0.01" step="0.01">`)}${field("Total de parcelas", `<input name="totalInstallments" required type="number" min="1">`)}${field("Parcela atual", `<input name="currentInstallment" required type="number" min="1">`)}${field("Vencimento", `<input name="dueDate" required type="date" value="${today}">`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`, true)}</div>` },
+      income: { title: "Adicionar renda", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Salário ou trabalho extra">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${field("Fonte", `<select name="source"><option>Salário mensal</option><option>Outra fonte de renda</option></select>`)}${field("", `<label class="repeat-option"><input name="recurring" type="checkbox"><span><strong>Renda recorrente</strong><small>Será considerada nos próximos meses.</small></span></label>`, true)}</div>` },
+      expense: { title: "Adicionar gasto", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: Gasolina ou almoço">`, true)}${field("Valor", `<input name="amount" required type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00">`)}${field("Data", `<input name="date" required type="date" value="${today}">`)}${field("Categoria", `<select name="category" required>${categories.map((item) => `<option>${item}</option>`).join("")}</select>`, true)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`, true)}</div>` },
+      card: { title: "Adicionar cartão", fields: `<div class="finance-form-grid">${field("Nome do cartão", `<input name="name" required maxlength="60" placeholder="Ex.: Nubank ou Itaú" >`, true)}${field("Dia de fechamento", `<input name="closingDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="ex: 15">`)}${field("Dia de vencimento", `<input name="dueDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="ex: 22">`, true)}</div>` },
+      subscription: { title: "Adicionar assinatura", fields: `<div class="finance-form-grid">${field("Nome", `<input name="name" required maxlength="100" placeholder="Ex.: Spotify ou Netflix">`, true)}${field("Valor mensal", `<input name="amount" required type="number" min="0.01" step="0.01" placeholder="0,00">`)}${field("Dia da cobrança", `<input name="chargeDay" required type="number" min="1" max="31" inputmode="numeric" placeholder="ex: 15">`)}${field("Cartão", `<select name="cardId"><option value="">Pagamento direto</option>${state.cards.map((card) => `<option value="${card.id}">${escape(card.name)}</option>`).join("")}</select>`, true)}${field("Início", `<input name="startDate" required type="date" value="${today}">`)}${field("", `<label class="repeat-option"><input name="active" type="checkbox" checked><span><strong>Assinatura ativa</strong><small>Entra automaticamente nos próximos meses.</small></span></label>`, true)}</div>` },
+      installment: { title: "Adicionar compromisso", fields: `<div class="finance-form-grid">${field("Descrição", `<input name="description" required maxlength="100" placeholder="Ex.: iPhone ou eletrônicos">`, true)}${field("Valor da parcela", `<input name="amount" required type="number" min="0.01" step="0.01" placeholder="0,00">`)}${field("Total de parcelas", `<input name="totalInstallments" required type="number" min="1" placeholder="ex: 12">`)}${field("Parcela atual", `<input name="currentInstallment" required type="number" min="1" placeholder="ex: 1">`, true)}${field("Vencimento", `<input name="dueDate" required type="date" value="${today}">`)}${field("Forma de pagamento", `<select name="paymentMethod" required>${paymentSelect()}</select>`, true)}</div>` },
     };
     const form = forms[type]; el.title.textContent = form.title; el.eyebrow.textContent = "Finanças"; el.fields.innerHTML = form.fields; el.dialog.showModal();
   }
@@ -131,6 +155,8 @@ const Finance = (() => {
 
   async function remove(store, id) { if (!confirm("Excluir este registro?")) return; await NextDB[store].remove(Number(id)); await load(); render(); }
   function switchView(view) { const finance = view === "finance"; el.view.hidden = !finance; el.cycle.hidden = finance; el.taskButton.hidden = finance; el.navigation.forEach((button) => button.classList.toggle("active", button.dataset.view === view)); if (finance) render(); }
+
+  // Eventos ficam centralizados para evitar listeners duplicados a cada renderização.
 
   function bind() {
     el.navigation.forEach((button) => button.addEventListener("click", () => switchView(button.dataset.view)));
