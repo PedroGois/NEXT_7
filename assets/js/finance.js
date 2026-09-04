@@ -95,7 +95,10 @@ const Finance = (() => {
   // RENDERIZAÇÃO
 
   function renderSummary(data) {
-    const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
+    let committedClass = "";
+    if (data.committed > data.income) committedClass = "committed-danger";
+    else if (data.income > 0) committedClass = (data.income - data.committed) / data.income < 0.1 ? "committed-warning" : "committed-goal";
+    const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed, committedClass], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
     el.summary.innerHTML = cards.map(([label, value, className = ""]) => `<article class="finance-card ${className}"><span>${label}</span><strong>${money(value)}</strong></article>`).join("");
   }
 

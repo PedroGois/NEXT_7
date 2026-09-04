@@ -229,6 +229,43 @@ Logo, nenhum dado passado é apagado, nenhum pagamento histórico é presumido e
 4. Registrar fatura em `invoices[YYYY-MM]`, inclusive após o fechamento e na virada de ano; confirmar que `cardInvoiceForMonth()` e a chave de `pago` usam o mesmo mês.
 5. Recarregar o navegador e conferir que o status continua no IndexedDB; conferir também que registros antigos sem `pago` aparecem como pendentes e continuam editáveis.
 
+### Mapeamento: cor do Total comprometido (implementado)
+
+Esta alteração é somente visual. Não requer IndexedDB, `db.js`, `index.html`, novo estado ou mudança em `totals()`: `renderSummary()` já recebe `income` e `committed` calculados para o mês selecionado.
+
+| Arquivo | Ponto real | Alteração mínima |
+| --- | --- | --- |
+| `assets/js/finance.js` | `renderSummary(data)` (linhas 97–100) | Definir, no próprio `renderSummary()`, uma classe adicional para o card **Total comprometido** antes de montar o array `cards`. Aplicar essa classe somente a esse card; os demais continuam com a aparência atual. |
+| `assets/css/style.css` | `.finance-card` e `.finance-card.balance` (linhas 62–64) | Criar três variações de `.finance-card` que reutilizem a borda e o fundo translúcido/gradiente de `.balance`, em vermelho, amarelo e azul. Não modificar o verde já aplicado a `.balance`. |
+
+#### Regra exata de classificação
+
+Considerar `income` como receita do mês e `committed` como total comprometido, ambos vindos de `totals()`:
+
+| Condição | Classe sugerida | Cor |
+| --- | --- | --- |
+| `committed > income` | `committed-danger` | Vermelho translúcido: o comprometido ultrapassou a receita. |
+| `income > 0`, `committed <= income` e `(income - committed) / income < 0.10` | `committed-warning` | Amarelo translúcido: sobra menor que 10% da receita. Inclui receita e comprometido iguais. |
+| `income > 0` e `(income - committed) / income >= 0.10` | `committed-goal` | Azul translúcido: sobra de 10% ou mais da receita, a meta. |
+| `income === 0` e `committed === 0` | nenhuma classe nova | Mantém o visual neutro; não existe percentual de diferença para classificar. |
+
+O limite de 10% é inclusivo para azul: exatamente 10% de sobra já é meta. Valores negativos entram primeiro no vermelho, evitando divisão ou percentual ambíguo.
+
+#### Forma mínima dentro de `renderSummary()`
+
+Sem alterar `totals()`, calcular a classe do comprometido uma vez e usá-la no segundo item do array que já forma os cards. A estrutura passa conceitualmente de `['Total comprometido', data.committed]` para `['Total comprometido', data.committed, committedClass]`. O `map()` existente já aplica o terceiro valor como classe no `<article>`.
+
+As regras de CSS devem seguir o padrão visual já usado pelo saldo disponível: borda com transparência e `linear-gradient` suave sobre `var(--surface)`. Sugestão de tons: vermelho `rgba(255, 117, 87, ...)`, amarelo `rgba(245, 196, 70, ...)` e azul `rgba(99, 179, 237, ...)`. Assim o card parece selecionado sem reduzir legibilidade.
+
+#### Validação quando for implementado
+
+1. Receita 1.000 e comprometido 1.001: vermelho.
+2. Receita 1.000 e comprometido 1.000, ou 950: amarelo.
+3. Receita 1.000 e comprometido 900: azul; é exatamente 10% de sobra.
+4. Receita 1.000 e comprometido 899: azul.
+5. Receita 0 e comprometido 0: neutro; receita 0 e comprometido maior que zero: vermelho.
+6. Trocar o mês e confirmar que a cor acompanha os valores daquele mês, sem gravar nem alterar dados.
+
 ## Como implementar uma alteração pontual
 
 1. Localize o elemento pelo `id` ou `data-*` em `index.html`.

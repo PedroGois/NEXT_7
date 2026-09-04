@@ -63,6 +63,9 @@ button:focus:not(:focus-visible) { outline: none; }
 .finance-card span { display: block; margin-bottom: 9px; color: var(--muted); font-size: .76rem; }
 .finance-card strong { overflow-wrap: anywhere; font: 700 1.18rem "Manrope"; letter-spacing: -.04em; }
 .finance-card.balance { border-color: rgba(198,243,107,.25); background: linear-gradient(145deg, rgba(198,243,107,.08), transparent), var(--surface); }
+.finance-card.committed-danger { border-color: rgba(255,117,87,.3); background: linear-gradient(145deg, rgba(255,117,87,.12), transparent), var(--surface); }
+.finance-card.committed-warning { border-color: rgba(245,196,70,.3); background: linear-gradient(145deg, rgba(245,196,70,.12), transparent), var(--surface); }
+.finance-card.committed-goal { border-color: rgba(99,179,237,.3); background: linear-gradient(145deg, rgba(99,179,237,.12), transparent), var(--surface); }
 .finance-actions { display: flex; gap: 10px; margin: 22px 0; }
 .finance-tabs { display: flex; min-width: 0; gap: 6px; margin-bottom: 18px; padding: 4px; border-radius: 999px; background: var(--surface); overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .finance-tab { flex: 0 0 auto; border: 0; background: transparent; }
