@@ -96,10 +96,17 @@ const Finance = (() => {
 
   function renderSummary(data) {
     let committedClass = "";
-    if (data.committed > data.income) committedClass = "committed-danger";
-    else if (data.income > 0) committedClass = (data.income - data.committed) / data.income < 0.1 ? "committed-warning" : "committed-goal";
-    const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed, committedClass], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
-    el.summary.innerHTML = cards.map(([label, value, className = ""]) => `<article class="finance-card ${className}"><span>${label}</span><strong>${money(value)}</strong></article>`).join("");
+    const difference = data.income - data.committed;
+    let committedIndicator = "";
+    if (data.committed > data.income) {
+      committedClass = "committed-danger";
+      committedIndicator = `<span class="finance-card-indicator danger"><i class="fa-solid fa-arrow-trend-up"></i> Falta ${money(Math.abs(difference))}</span>`;
+    } else if (data.income > 0) {
+      committedClass = difference / data.income < 0.1 ? "committed-warning" : "committed-goal";
+      if (difference > 0) committedIndicator = `<span class="finance-card-indicator success"><i class="fa-solid fa-arrow-trend-down"></i> Sobra ${money(difference)}</span>`;
+    }
+    const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed, `committed ${committedClass}`, committedIndicator], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
+    el.summary.innerHTML = cards.map(([label, value, className = "", indicator = ""]) => `<article class="finance-card ${className}">${indicator}<span>${label}</span><strong>${money(value)}</strong></article>`).join("");
   }
 
   function listItem(icon, title, detail, value, type = "", remove = "") {

@@ -266,6 +266,36 @@ As regras de CSS devem seguir o padrão visual já usado pelo saldo disponível:
 5. Receita 0 e comprometido 0: neutro; receita 0 e comprometido maior que zero: vermelho.
 6. Trocar o mês e confirmar que a cor acompanha os valores daquele mês, sem gravar nem alterar dados.
 
+### Mapeamento: indicador de sobra ou falta no Total comprometido (implementado)
+
+Esta é outra alteração somente de apresentação. Ela reutiliza `data.income`, `data.committed` e `money()` já disponíveis em `renderSummary()`; não altera `totals()`, dados salvos ou o IndexedDB.
+
+| Arquivo | Ponto real | Alteração mínima |
+| --- | --- | --- |
+| `assets/js/finance.js` | `renderSummary(data)` (linhas 97–103) | Calcular `difference = data.income - data.committed` no mesmo bloco que já decide `committedClass`. Montar um pequeno HTML de indicador somente para o card **Total comprometido** e incluí-lo no `<article>` gerado pelo `map()` atual. |
+| `assets/css/style.css` | `.finance-card` (linha 62) | Definir o card como referência de posicionamento e posicionar o indicador no canto superior direito. Criar somente os estilos do indicador de falta e de sobra. |
+
+#### Regra do indicador
+
+| Condição | Texto/valor | Ícone | Estilo |
+| --- | --- | --- | --- |
+| `data.committed > data.income` | `Falta ${money(data.committed - data.income)}` | `fa-arrow-trend-up` | vermelho, indicando que as obrigações ultrapassam a receita. |
+| `data.committed < data.income` | `Sobra ${money(data.income - data.committed)}` | `fa-arrow-trend-down` | verde, indicando valor ainda livre depois do comprometido. |
+| `data.committed === data.income` | não exibir indicador | — | não há sobra nem falta. |
+
+O indicador deve ser uma tag compacta no canto superior direito do card, separada do título e do valor principal. Sugestão de marcação: um `span.finance-card-indicator` com um ícone Font Awesome e o valor; `finance-card-indicator danger` para falta e `finance-card-indicator success` para sobra. Os ícones já estão disponíveis em `index.html` pela biblioteca Font Awesome carregada pelo projeto.
+
+Para a inclusão sem refatorar a estrutura, ampliar os itens do array de `renderSummary()` com um quarto valor opcional, por exemplo `indicator`, e renderizá-lo dentro do `<article>` apenas quando existir. O segundo item — **Total comprometido** — é o único que recebe esse quarto valor; os outros cards seguem iguais.
+
+No CSS, usar `position: relative` em `.finance-card` e `position: absolute; top: ...; right: ...` no indicador. Aplicar fundo/borda transparentes em vermelho para `.danger` e em verde para `.success`, no mesmo estilo suave dos cards coloridos já existentes. Garantir espaço à direita no título do card para a tag não sobrepor o texto em telas pequenas.
+
+#### Validação quando for implementado
+
+1. Receita 1.000 e comprometido 1.200: tag vermelha com seta para cima e `Falta R$ 200,00`.
+2. Receita 1.000 e comprometido 800: tag verde com seta para baixo e `Sobra R$ 200,00`.
+3. Receita e comprometido em 1.000: nenhuma tag.
+4. Alternar de mês e conferir que tanto a tag quanto a cor do card acompanham os valores mensais.
+
 ## Como implementar uma alteração pontual
 
 1. Localize o elemento pelo `id` ou `data-*` em `index.html`.
