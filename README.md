@@ -296,6 +296,40 @@ No CSS, usar `position: relative` em `.finance-card` e `position: absolute; top:
 3. Receita e comprometido em 1.000: nenhuma tag.
 4. Alternar de mês e conferir que tanto a tag quanto a cor do card acompanham os valores mensais.
 
+### Mapeamento: mover a tag de sobra/falta para abaixo do valor (implementado)
+
+O indicador atual é `committedIndicator`, montado em `renderSummary()` de `assets/js/finance.js`, e usa `.finance-card-indicator` em `assets/css/style.css`. Esta alteração muda somente sua posição visual; a regra de falta/sobra, cores, ícones, cálculo da diferença e cache de dados permanecem iguais.
+
+| Arquivo | Ponto real | Alteração mínima |
+| --- | --- | --- |
+| `assets/js/finance.js` | `renderSummary(data)` (linhas 97–111) | Na string do `map()` que monta o `<article>`, mover `${indicator}` para depois de `<strong>${money(value)}</strong>`. Assim a ordem interna do card comprometido fica: título, valor principal, tag. |
+| `assets/css/style.css` | `.finance-card.committed > span:not(.finance-card-indicator)` e `.finance-card-indicator` (linhas 64 e 70) | Remover o espaço reservado à direita do título e retirar o posicionamento absoluto (`position`, `top`, `right`) da tag. Tornar a tag um elemento normal em fluxo, com margem superior pequena, para aparecer abaixo do valor. |
+
+#### Resultado esperado
+
+```text
+Total comprometido
+R$ 800,00
+↓ Sobra R$ 200,00
+```
+
+ou, em situação de falta:
+
+```text
+Total comprometido
+R$ 1.200,00
+↑ Falta R$ 200,00
+```
+
+A tag deve continuar compacta, alinhada à esquerda abaixo do valor e sem ocupar espaço lateral do título. Em telas pequenas, o card mantém sua altura natural e a distribuição fica vertical, evitando sobreposição.
+
+#### Validação quando for implementado
+
+1. Confirmar que sobra e falta continuam usando os mesmos ícones, textos e cores atuais.
+2. Conferir que a tag aparece abaixo do número principal, nunca sobre o título.
+3. Em empate entre receita e comprometido, confirmar que a tag continua ausente e que não fica espaço vazio adicional.
+4. Verificar a visualização no layout de duas colunas para celular.
+
 ## Como implementar uma alteração pontual
 
 1. Localize o elemento pelo `id` ou `data-*` em `index.html`.

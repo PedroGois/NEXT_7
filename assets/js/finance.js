@@ -106,7 +106,7 @@ const Finance = (() => {
       if (difference > 0) committedIndicator = `<span class="finance-card-indicator success"><i class="fa-solid fa-arrow-trend-down"></i> Sobra ${money(difference)}</span>`;
     }
     const cards = [["Receita do mês", data.income], ["Total comprometido", data.committed, `committed ${committedClass}`, committedIndicator], ["Total gasto", data.spent], ["Saldo disponível", data.balance, "balance"]];
-    el.summary.innerHTML = cards.map(([label, value, className = "", indicator = ""]) => `<article class="finance-card ${className}">${indicator}<span>${label}</span><strong>${money(value)}</strong></article>`).join("");
+    el.summary.innerHTML = cards.map(([label, value, className = "", indicator = ""]) => `<article class="finance-card ${className}"><span>${label}</span><strong>${money(value)}</strong>${indicator}</article>`).join("");
   }
 
   function listItem(icon, title, detail, value, type = "", remove = "") {

@@ -61,13 +61,12 @@ button:focus:not(:focus-visible) { outline: none; }
 .finance-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .finance-card { position: relative; min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); }
 .finance-card span { display: block; margin-bottom: 9px; color: var(--muted); font-size: .76rem; }
-.finance-card.committed > span:not(.finance-card-indicator) { padding-right: 94px; }
 .finance-card strong { overflow-wrap: anywhere; font: 700 1.18rem "Manrope"; letter-spacing: -.04em; }
 .finance-card.balance { border-color: rgba(198,243,107,.25); background: linear-gradient(145deg, rgba(198,243,107,.08), transparent), var(--surface); }
 .finance-card.committed-danger { border-color: rgba(255,117,87,.3); background: linear-gradient(145deg, rgba(255,117,87,.12), transparent), var(--surface); }
 .finance-card.committed-warning { border-color: rgba(245,196,70,.3); background: linear-gradient(145deg, rgba(245,196,70,.12), transparent), var(--surface); }
 .finance-card.committed-goal { border-color: rgba(99,179,237,.3); background: linear-gradient(145deg, rgba(99,179,237,.12), transparent), var(--surface); }
-.finance-card-indicator { position: absolute; top: 13px; right: 13px; display: inline-flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 4px 6px; border: 1px solid transparent; border-radius: 999px; font-size: .58rem !important; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+.finance-card-indicator { display: inline-flex !important; align-items: center; gap: 4px; margin: 9px 0 0 !important; padding: 4px 6px; border: 1px solid transparent; border-radius: 999px; font-size: .58rem !important; font-weight: 700; line-height: 1.2; white-space: nowrap; }
 .finance-card-indicator.danger { border-color: rgba(255,117,87,.3); color: #ff9a83; background: rgba(255,117,87,.12); }
 .finance-card-indicator.success { border-color: rgba(198,243,107,.28); color: var(--accent); background: rgba(198,243,107,.1); }
 .finance-actions { display: flex; gap: 10px; margin: 22px 0; }
