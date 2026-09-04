@@ -72,6 +72,8 @@ button:focus:not(:focus-visible) { outline: none; }
 .finance-item-value.income { color: var(--accent); }
 .finance-item-actions { display: flex; flex: 0 0 auto; gap: 4px; }
 .finance-item-actions .delete-task { min-width: 32px; opacity: 1; }
+.finance-payment { color: var(--muted); }
+.finance-payment.paid { color: var(--accent); }
 .finance-add-row { width: 100%; margin-bottom: 14px; padding: 12px; border: 1px dashed rgba(198,243,107,.35); border-radius: 12px; color: var(--accent); background: transparent; font-weight: 700; text-align: left; cursor: pointer; }
 .finance-empty { padding: 35px 20px; border: 1px dashed var(--line); border-radius: var(--radius-md); color: var(--muted); text-align: center; }.finance-empty p { margin: 6px 0 0; }
 .finance-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }

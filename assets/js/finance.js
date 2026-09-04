@@ -76,17 +76,20 @@ const Finance = (() => {
   }
 
   function totals() {
-    // Um gasto direto é pago no mês; cartão, assinatura e parcela são compromisso.
-    // Assim o saldo não desconta a mesma compra duas vezes.
     const income = state.income.reduce((total, item) => total + recurringIncomeForMonth(item), 0);
-    const spent = sum(state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey()));
+    const expenses = state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey());
     const cardExpenses = state.expenses.filter((item) => item.cardId && invoiceMonth(item.date, state.cards.find((card) => card.id === Number(item.cardId))) === selectedKey());
     const installments = state.installments.map(installmentForMonth).filter(Boolean);
     const subscriptions = state.subscriptions.map(subscriptionForMonth).filter(Boolean);
     const cardInvoices = state.cards.map((card) => ({ card, current: cardInvoiceForMonth(card) }));
     const projectedSubscriptions = subscriptions.filter((item) => item.projected);
-    const committed = sum(cardExpenses) + sum(installments) + sum(projectedSubscriptions) + cardInvoices.reduce((total, item) => total + item.current, 0);
-    return { income, spent, committed, balance: income - spent - committed, cardExpenses, installments, subscriptions, projectedSubscriptions, cardInvoices };
+    const paidExpenses = expenses.filter((item) => item.pago === true);
+    const paidInstallments = installments.filter((item) => !String(item.paymentMethod || "").startsWith("card:") && item.pago?.[selectedKey()] === true);
+    const paidSubscriptions = subscriptions.filter((item) => !item.cardId && item.pago?.[selectedKey()] === true);
+    const paidCardInvoices = cardInvoices.filter((item) => item.card.pago?.[selectedKey()] === true);
+    const spent = sum(paidExpenses) + sum(paidInstallments) + sum(paidSubscriptions) + paidCardInvoices.reduce((total, item) => total + item.current, 0);
+    const committed = sum(expenses) + sum(cardExpenses) + sum(installments) + sum(projectedSubscriptions) + cardInvoices.reduce((total, item) => total + item.current, 0);
+    return { income, spent, committed, balance: income - spent, expenses, cardExpenses, installments, subscriptions, projectedSubscriptions, cardInvoices };
   }
 
   // RENDERIZAÇÃO
@@ -101,11 +104,12 @@ const Finance = (() => {
   }
   const editButton = (type, id) => `<button class="delete-task finance-delete" type="button" data-finance-edit="${type}" data-id="${id}" aria-label="Editar"><i class="fa-solid fa-pen"></i></button>`;
   const removeButton = (store, id) => `<button class="delete-task finance-delete" type="button" data-finance-delete="${store}" data-id="${id}" aria-label="Excluir"><i class="fa-solid fa-trash-can"></i></button>`;
-  const actions = (type, store, id) => `<div class="finance-item-actions">${editButton(type, id)}${removeButton(store, id)}</div>`;
+  const paymentButton = (store, id, paid) => `<button class="delete-task finance-delete finance-payment ${paid ? "paid" : ""}" type="button" data-finance-paid="${store}" data-id="${id}" aria-label="${paid ? "Desmarcar pagamento" : "Marcar como pago"}" title="${paid ? "Desmarcar pagamento" : "Marcar como pago"}"><i class="fa-solid ${paid ? "fa-circle-check" : "fa-circle"}"></i></button>`;
+  const actions = (type, store, id, payment = "") => `<div class="finance-item-actions">${payment}${editButton(type, id)}${removeButton(store, id)}</div>`;
 
   function renderEntries(data = totals()) {
     const incomes = state.income.filter((item) => recurringIncomeForMonth(item));
-    const expenses = state.expenses.filter((item) => !item.cardId && item.date.slice(0, 7) === selectedKey());
+    const expenses = data.expenses;
     const subscriptions = state.subscriptions
       .filter((item) => item.active && item.startDate <= monthDate(state.month, item.chargeDay))
       .map((item) => {
@@ -115,10 +119,10 @@ const Finance = (() => {
       });
     const rows = [
       ...incomes.map((item) => listItem("fa-arrow-trend-up", item.description, `${item.source || "Renda"} · ${dateLabel(item.date)}${item.recurring ? " · recorrente" : ""}`, item.amount, "income", actions("income", "income", item.id))),
-      ...expenses.map((item) => listItem("fa-arrow-trend-down", item.description, `${item.category} · ${item.paymentMethod} · ${dateLabel(item.date)}`, item.amount, "", actions("expense", "expenses", item.id))),
+      ...expenses.map((item) => listItem("fa-arrow-trend-down", item.description, `${item.category} · ${item.paymentMethod} · ${dateLabel(item.date)} · ${item.pago ? "Pago" : "Pendente"}`, item.amount, "", actions("expense", "expenses", item.id, paymentButton("expenses", item.id, item.pago === true)))),
       ...data.cardExpenses.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-credit-card", item.description, `${item.category} · fatura de ${card?.name || "cartão removido"}`, item.amount, "", actions("expense", "expenses", item.id)); }),
-      ...data.installments.map((item) => listItem("fa-calendar-check", item.description, `Parcela ${item.current}/${item.totalInstallments} · ${item.paymentMethod}`, item.amount, "", actions("installment", "installments", item.id))),
-      ...subscriptions.map((item) => listItem("fa-repeat", item.name, `Assinatura · cobrança ${dateLabel(item.chargeDate)}${item.card ? ` · fatura ${item.invoice} de ${item.card.name}` : " · pagamento direto"}`, item.amount, "", actions("subscription", "subscriptions", item.id))),
+      ...data.installments.map((item) => { const cardPayment = String(item.paymentMethod || "").startsWith("card:"); const paid = item.pago?.[selectedKey()] === true; return listItem("fa-calendar-check", item.description, `Parcela ${item.current}/${item.totalInstallments} · ${cardPayment ? "fatura do cartão" : `${item.paymentMethod} · ${paid ? "Pago" : "Pendente"}`}`, item.amount, "", actions("installment", "installments", item.id, cardPayment ? "" : paymentButton("installments", item.id, paid))); }),
+      ...subscriptions.map((item) => { const paid = item.pago?.[selectedKey()] === true; return listItem("fa-repeat", item.name, `Assinatura · cobrança ${dateLabel(item.chargeDate)}${item.card ? ` · fatura ${item.invoice} de ${item.card.name}` : ` · pagamento direto · ${paid ? "Pago" : "Pendente"}`}`, item.amount, "", actions("subscription", "subscriptions", item.id, item.card ? "" : paymentButton("subscriptions", item.id, paid))); }),
     ];
     el.content.innerHTML = rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><i class="fa-solid fa-wallet"></i><p>Nenhum lançamento neste mês.</p></div>`;
   }
@@ -127,16 +131,17 @@ const Finance = (() => {
     const rows = state.cards.map((card) => {
       const current = data.cardInvoices.find((item) => item.card.id === card.id)?.current || 0;
       const projected = sum(data.projectedSubscriptions.filter((item) => Number(item.cardId) === card.id));
-      return listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay} · fatura ${money(current)} · previsto ${money(projected)} · projetada ${money(current + projected)}`, current + projected, "", actions("card", "creditCards", card.id));
+      const paid = card.pago?.[selectedKey()] === true;
+      return listItem("fa-credit-card", card.name, `Fecha dia ${card.closingDay} · vence dia ${card.dueDay} · fatura ${money(current)} · previsto ${money(projected)} · projetada ${money(current + projected)} · ${paid ? "Fatura paga" : "Fatura pendente"}`, current + projected, "", actions("card", "creditCards", card.id, paymentButton("creditCards", card.id, paid)));
     });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="card" type="button">+ Adicionar cartão</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Cadastre um cartão para enviar compras à fatura certa.</p></div>`}`;
   }
   function renderSubscriptions() {
-    const rows = state.subscriptions.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); return listItem("fa-repeat", item.name, `${item.active ? "Ativa" : "Inativa"} · dia ${item.chargeDay}${card ? ` · ${card.name}` : ""}`, item.amount, "", actions("subscription", "subscriptions", item.id)); });
+    const rows = state.subscriptions.map((item) => { const card = state.cards.find((entry) => entry.id === Number(item.cardId)); const visible = subscriptionForMonth(item); const paid = item.pago?.[selectedKey()] === true; return listItem("fa-repeat", item.name, `${item.active ? "Ativa" : "Inativa"} · dia ${item.chargeDay}${card ? ` · ${card.name} · pagamento na fatura` : visible ? ` · ${paid ? "Pago" : "Pendente"}` : ""}`, item.amount, "", actions("subscription", "subscriptions", item.id, !card && visible ? paymentButton("subscriptions", item.id, paid) : "")); });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="subscription" type="button">+ Adicionar assinatura</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Assinaturas ativas entram automaticamente no mês.</p></div>`}`;
   }
   function renderInstallments() {
-    const rows = state.installments.map((item) => { const visible = installmentForMonth(item); return listItem("fa-calendar-check", item.description, `${visible ? `Parcela ${visible.current}/${item.totalInstallments}` : `A partir de ${dateLabel(item.dueDate)}`} · ${item.paymentMethod}`, item.amount, "", actions("installment", "installments", item.id)); });
+    const rows = state.installments.map((item) => { const visible = installmentForMonth(item); const cardPayment = String(item.paymentMethod || "").startsWith("card:"); const paid = item.pago?.[selectedKey()] === true; const period = visible ? `Parcela ${visible.current}/${item.totalInstallments}` : `A partir de ${dateLabel(item.dueDate)}`; const payment = cardPayment ? "pagamento na fatura" : `${item.paymentMethod}${visible ? ` · ${paid ? "Pago" : "Pendente"}` : ""}`; return listItem("fa-calendar-check", item.description, `${period} · ${payment}`, item.amount, "", actions("installment", "installments", item.id, !cardPayment && visible ? paymentButton("installments", item.id, paid) : "")); });
     el.content.innerHTML = `<button class="finance-add-row" data-open-finance-form="installment" type="button">+ Adicionar compromisso</button>${rows.length ? `<div class="finance-list">${rows.join("")}</div>` : `<div class="finance-empty"><p>Registre parcelas, financiamentos e compromissos mensais.</p></div>`}`;
   }
   function renderReports() { el.content.innerHTML = `<div class="finance-empty"><i class="fa-solid fa-chart-line"></i><h3>Relatórios</h3><p>Os relatórios estarão disponíveis após seu primeiro mês de dados.</p></div>`; }
@@ -189,7 +194,11 @@ const Finance = (() => {
     if (type === "subscription") data.active = data.active === "on";
     const store = { income: "income", expense: "expenses", card: "creditCards", subscription: "subscriptions", installment: "installments" }[type];
     data.amount = data.amount ? Number(data.amount) : 0;
-    if (!state.editing) data.createdAt = new Date().toISOString();
+    if (!state.editing) {
+      data.createdAt = new Date().toISOString();
+      if (type === "expense" && !data.cardId) data.pago = false;
+      if (["card", "subscription", "installment"].includes(type)) data.pago = {};
+    }
     if (type === "card") {
       const invoices = { ...(state.editing?.invoices || {}) };
       if (state.editing?.currentInvoiceMonth && !Object.prototype.hasOwnProperty.call(invoices, state.editing.currentInvoiceMonth)) {
@@ -217,8 +226,22 @@ const Finance = (() => {
     el.openIncome.addEventListener("click", () => openForm("income")); el.openExpense.addEventListener("click", () => openForm("expense"));
     el.closeForm.addEventListener("click", () => el.dialog.close()); el.cancelForm.addEventListener("click", () => el.dialog.close()); el.form.addEventListener("submit", saveForm);
     el.tabs.addEventListener("click", (event) => { const button = event.target.closest("[data-finance-tab]"); if (!button) return; state.tab = button.dataset.financeTab; el.tabButtons.forEach((tab) => tab.classList.toggle("active", tab === button)); renderContent(); });
-    el.content.addEventListener("click", (event) => {
+    el.content.addEventListener("click", async (event) => {
       const add = event.target.closest("[data-open-finance-form]"); if (add) openForm(add.dataset.openFinanceForm);
+      const payment = event.target.closest("[data-finance-paid]");
+      if (payment) {
+        const store = payment.dataset.financePaid;
+        const collection = { expenses: state.expenses, creditCards: state.cards, subscriptions: state.subscriptions, installments: state.installments }[store];
+        const item = collection.find((entry) => entry.id === Number(payment.dataset.id));
+        if (!item) return;
+        if (store === "expenses") item.pago = item.pago !== true;
+        else {
+          const paid = { ...(item.pago || {}) };
+          if (paid[selectedKey()]) delete paid[selectedKey()]; else paid[selectedKey()] = true;
+          item.pago = paid;
+        }
+        await NextDB[store].update(item); await load(); render(); return;
+      }
       const edit = event.target.closest("[data-finance-edit]");
       if (edit) {
         const collection = { income: state.income, expense: state.expenses, card: state.cards, subscription: state.subscriptions, installment: state.installments }[edit.dataset.financeEdit];
