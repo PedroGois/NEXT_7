@@ -31,6 +31,11 @@ body {
   font-family: "DM Sans", sans-serif;
 }
 
+.app-version {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
 button, input, select, textarea { font: inherit; }
 button { color: inherit; }
 button:focus:not(:focus-visible) { outline: none; }
